@@ -1,0 +1,6 @@
+# Only for the isolated export-limit test; combine with restore.compose.yaml.
+services:
+  api:
+    environment:
+      OA_DEV_SEED: "true"
+      OA_SEED_PASSWORD: ${OA_SEED_PASSWORD:?Run oa-commercial-export-limit.sh}

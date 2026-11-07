@@ -286,3 +286,5 @@ h3 { font-size: 1rem; }
 @media (prefers-reduced-motion: reduce) {
   .h5-frame :is(a, button, [role="tab"]) { transition: none; }
 }
+
+.h5-list-heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }

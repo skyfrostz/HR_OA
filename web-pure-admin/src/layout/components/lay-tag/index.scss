@@ -203,7 +203,7 @@
   }
 
   .tag-title {
-    color: var(--el-color-primary) !important;
+    color: var(--oa-accent-text, var(--el-color-primary)) !important;
   }
 
   .chrome-close-btn {

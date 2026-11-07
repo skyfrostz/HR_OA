@@ -8,3 +8,7 @@
   --oa-line: #e7ebf2;
   --oa-font: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
+
+html.dark {
+  --oa-accent-text: color-mix(in srgb, var(--el-color-primary) 35%, var(--el-text-color-primary));
+}

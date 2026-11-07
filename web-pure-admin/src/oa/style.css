@@ -2,7 +2,7 @@
 
 .oa-pure, .oa-pure-login { color: var(--el-text-color-primary); font: 400 .9375rem/1.5 var(--oa-font); }
 .oa-pure { min-width: 0; }
-.oa-pure .oa-surface, .oa-pure-login .oa-surface { background: var(--el-bg-color); border-color: var(--el-border-color-light); }
+.oa-pure.oa-surface, .oa-pure .oa-surface, .oa-pure-login .oa-surface { background: var(--el-bg-color); border-color: var(--el-border-color-light); }
 .oa-pure .oa-muted { color: var(--el-text-color-secondary); }
 .oa-pure .oa-inline-form, .oa-pure .oa-profile-groups > section { background: var(--el-fill-color-light); }
 .oa-pure .oa-form :is(input, select), .oa-pure-login .oa-form input {
@@ -90,6 +90,13 @@
 .oa-logout { margin-left: .25rem; }
 
 .oa-table-panel { padding: 0; overflow: clip; }
+.dark .oa-employee-page .oa-table-panel {
+  --oa-muted: var(--el-text-color-secondary);
+  --oa-line: var(--el-border-color-lighter);
+}
+.dark .oa-employee-page .oa-table-action .el-button {
+  --el-button-text-color: var(--oa-accent-text);
+}
 .oa-table-wrap { overflow: auto; }
 .oa-table { width: 100%; border-collapse: collapse; text-align: left; }
 .oa-table :is(th, td) { padding: .75rem 1rem; border-bottom: 1px solid var(--oa-line); overflow-wrap: anywhere; }
@@ -173,3 +180,10 @@
   background: var(--el-bg-color);
 }
 .oa-form textarea { width: 100%; }
+
+.oa-directory-filters {
+  padding: 0 1.25rem .875rem;
+}
+.oa-directory-filters .oa-fields { grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); }
+.oa-directory-filters .oa-actions { justify-content: space-between; }
+.oa-directory-filters .oa-filter select { width: auto; }

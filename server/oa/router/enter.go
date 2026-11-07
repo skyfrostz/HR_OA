@@ -47,6 +47,7 @@ func protectedRoutes(a *api.API) []route {
 	return []route{
 		{http.MethodGet, "/auth/me", a.Me, authenticated},
 		{http.MethodGet, "/employees", a.ListEmployees, authenticated},
+		{http.MethodPost, "/employees/search", a.SearchEmployees, authenticated},
 		{http.MethodPost, "/employees", a.CreateEmployee, hrWrite},
 		{http.MethodGet, "/employees/:id", a.Employee, authenticated},
 		{http.MethodGet, "/employees/:id/contracts", a.ListContracts, authenticated},
@@ -73,6 +74,7 @@ func protectedRoutes(a *api.API) []route {
 		{http.MethodGet, "/employee-imports/:id", a.EmployeeImportPreview, hrWrite},
 		{http.MethodPost, "/employee-imports/:id/confirm", a.ConfirmEmployeeImport, hrWrite},
 		{http.MethodGet, "/employees/export.xlsx", a.ExportEmployees, authenticated},
+		{http.MethodPost, "/employees/export.xlsx", a.ExportFilteredEmployees, authenticated},
 		{http.MethodGet, "/contract-reminders", a.ContractReminders, authenticated},
 	}
 }

@@ -23,3 +23,11 @@
 `M1_SOURCE_SHA256SUMS`、`M2_SOURCE_SHA256SUMS`、`PURE_M3_SOURCE_SHA256SUMS` 是各自验收时的历史快照。此次文档、修改声明与 CI 调整不回写这些历史清单；它们不应被当成发布后整个工作树的零差异清单。`PURE_ADMIN_UPSTREAM_SHA256SUMS` 始终描述原始 Pure 导入，不能被修改后的内容替换。
 
 本机 `.env`、依赖、构建输出、数据库、私有附件、备份、日志和测试状态不参与发布。当前企业微信和阿里云 OSS 未配置，历史本地 PASS 不证明真实外部联调或生产可用性。CI 的实际结果以该发布提交对应的 GitHub Actions 状态为准。
+
+## 商业审查首批补强发布（2026-11-07）
+
+用户再次明确授权：将本轮通过本地验收的修改推送到 main，修复并跑通 GitHub CI，并展示页面截图。该授权取代商业审查阶段的暂不提交/推送约定，仍不涉及公网运行部署。
+
+本批内容包括员工服务端搜索、精确部门筛选、分页及同条件导出，部门草稿保护，Pure 浅深色修复，H5 刷新，API/Web 自动重启，以及 Pure 登录测试等待与独立 CI 诊断。真实 MySQL、四角色范围、5000/5001 行边界、Chromium 和自动恢复的本地验证见 [商业审查报告](COMMERCIAL_REVIEW.md)。
+
+`COMMERCIAL_REVIEW_SOURCE_SHA256SUMS` 保留文档收口时 45 项文件快照。此次发布更新 README、发布记录和需求状态，不回写该快照；源代码/镜像验收绑定继续以 QA 报告为准。此前远端失败记录保留；新运行须关联实际提交，不能将原运行改写为成功。最新状态见 [main 工作流](https://github.com/skyfrostz/HR_OA/actions/workflows/ci.yaml?query=branch%3Amain)。

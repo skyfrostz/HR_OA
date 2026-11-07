@@ -44,7 +44,7 @@ const navigation = employeeNavigation();
 .navbar { display: flex; align-items: center; justify-content: space-between; height: 48px; padding-inline: 12px; gap: 8px; }
 .vertical-header-right { display: flex; flex-wrap: nowrap; align-items: center; gap: 10px; margin-inline-start: auto; min-width: 0; }
 .oa-navbar-dev { color: var(--el-text-color-secondary); font-size: 12px; }
-.oa-navbar-link { color: var(--el-color-primary); white-space: nowrap; }
+.oa-navbar-link { color: var(--oa-accent-text, var(--el-color-primary)); white-space: nowrap; }
 .oa-navbar-link[aria-disabled="true"] { color: var(--el-text-color-secondary); }
 .oa-navbar-user { max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .oa-settings { display: grid; place-items: center; min-width: 32px; min-height: 32px; border: 0; background: transparent; cursor: pointer; }

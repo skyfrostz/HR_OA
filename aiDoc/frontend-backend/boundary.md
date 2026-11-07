@@ -6,6 +6,8 @@
 
 OA 的业务契约为 `docs/OA_API_CONTRACT.md` 及 M2/M3 扩展，接口前缀 `/api/oa/v1`。后端由 `server/cmd/oa` 显式启动，仅注册 OA 允许的路由；当前 PC 来自 `web-pure-admin/oa.html`，H5 来自 `web/h5.html`。沿用 GVA 用户/角色模型与 `{ code, data, msg }` 响应，不引入第二套账号库。OA 通过 `x-token` 头传递内存中的短期令牌，不能复用会持久化令牌的原管理端登录流程。工资字段与员工行权限由服务端执行，前端可见性仅用于交互。
 
+2026-11-07 商业交付审查增量见 `docs/COMMERCIAL_REVIEW_API.md`：新增 POST `/employees/search` 和 POST `/employees/export.xlsx`，搜索条件通过 JSON body 传递，禁止姓名/工号等进入 URL 或持久化存储；列表与导出共享筛选和授权语义。旧 GET 接口保留。文档描述的是本轮约定，实现与真实运行验收须另有证据。
+
 ## 归属边界
 
 - 后端负责路由、参数校验、业务逻辑和响应结构

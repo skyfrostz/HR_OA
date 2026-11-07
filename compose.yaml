@@ -20,6 +20,7 @@ services:
       retries: 20
       start_period: 30s
   api:
+    restart: unless-stopped
     build:
       context: .
       target: api
@@ -42,6 +43,7 @@ services:
       timeout: 3s
       retries: 12
   web:
+    restart: unless-stopped
     build:
       context: .
       target: web

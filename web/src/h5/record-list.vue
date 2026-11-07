@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, shallowRef, useTemplateRef, watch } from 'vue'
+import { computed, onMounted, onUnmounted, shallowRef, useTemplateRef, watch } from 'vue'
 import { Button, Tag } from 'vant'
 import { listPage } from '../oa/api'
 import { useSession } from '../oa/session'
@@ -43,14 +43,25 @@ const records = computed(() => (result.value?.list || []).map((item) => {
 }))
 
 watch(page, load, { immediate: true })
-onMounted(() => heading.value.focus())
+function refreshWhenVisible() {
+  if (document.visibilityState === 'visible') void load()
+}
+
+onMounted(() => {
+  heading.value.focus()
+  document.addEventListener('visibilitychange', refreshWhenVisible)
+})
+onUnmounted(() => document.removeEventListener('visibilitychange', refreshWhenVisible))
 </script>
 
 <template>
   <section aria-labelledby="h5-list-heading">
-    <div class="h5-heading">
-      <h1 id="h5-list-heading" ref="heading" tabindex="-1">{{ view.heading }}</h1>
-      <p v-if="view.path === '/notifications'" class="h5-muted">仅接收模拟站内通知。</p>
+    <div class="h5-heading h5-list-heading">
+      <div>
+        <h1 id="h5-list-heading" ref="heading" tabindex="-1">{{ view.heading }}</h1>
+        <p v-if="view.path === '/notifications'" class="h5-muted">仅接收模拟站内通知。</p>
+      </div>
+      <Button size="small" plain type="primary" @click="load">刷新</Button>
     </div>
     <PageState
       :loading="loading"

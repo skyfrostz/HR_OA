@@ -35,7 +35,7 @@ const columns: TableColumnList = [
 
 watch(page, directory.load, { immediate: true });
 void parents.load();
-useRouteWriteLock(computed(() => busy.value || needsRefresh.value));
+useRouteWriteLock(computed(() => Boolean(editor.value) || busy.value || needsRefresh.value));
 
 function begin(row: Department | "new") {
   if (!canManage.value || editor.value) return;
@@ -47,8 +47,11 @@ function begin(row: Department | "new") {
 }
 
 async function refresh() {
-  const results = await Promise.all([directory.load(), parents.load()]);
-  if (results.every(Boolean)) {
+  return (await Promise.all([directory.load(), parents.load()])).every(Boolean);
+}
+
+async function reconcile() {
+  if (needsRefresh.value && await refresh()) {
     needsRefresh.value = false;
     editor.value = null;
     error.value = "";
@@ -105,7 +108,7 @@ async function save() {
       </div>
       <ElAlert v-if="error" :title="error" type="warning" :closable="false" />
       <div class="oa-actions">
-        <ElButton v-if="needsRefresh" :loading="directory.loading.value" @click="refresh">重新读取部门</ElButton>
+        <ElButton v-if="needsRefresh" :loading="directory.loading.value" @click="reconcile">重新读取部门</ElButton>
         <template v-else>
           <ElButton native-type="submit" type="primary" :loading="busy" :disabled="parents.loading.value || Boolean(parents.error.value)">保存部门</ElButton>
           <ElButton :disabled="busy" @click="editor = null">取消</ElButton>
@@ -115,7 +118,7 @@ async function save() {
     <p v-if="feedback" role="status" class="oa-status">{{ feedback }}</p>
     <section class="oa-surface">
       <div class="oa-section-head">
-        <h2>部门名录</h2><ElButton :disabled="busy || directory.loading.value" @click="refresh">刷新</ElButton>
+        <h2>部门名录</h2><ElButton :disabled="Boolean(editor) || busy || directory.loading.value" @click="refresh">刷新</ElButton>
       </div>
       <RemoteState
         :loading="directory.loading.value"

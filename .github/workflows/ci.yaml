@@ -37,10 +37,31 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24.15.0'
-      - run: npx --yes pnpm@10.32.1 install --frozen-lockfile --ignore-scripts
-      - run: npx --yes pnpm@10.32.1 run test
-      - run: npx --yes pnpm@10.32.1 run typecheck
-      - run: npx --yes pnpm@10.32.1 run build
+      - name: Install locked dependencies
+        id: install
+        run: npx --yes pnpm@10.32.1 install --frozen-lockfile --ignore-scripts
+      - name: Test OA interactions
+        id: test
+        run: npx --yes pnpm@10.32.1 run test
+      # Keep independent diagnostics after a failed test without hiding its failure.
+      - name: Check production entry types
+        id: typecheck
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npx --yes pnpm@10.32.1 run typecheck
+      - name: Build production entry
+        id: build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npx --yes pnpm@10.32.1 run build
+      - name: Record independent check outcomes
+        if: ${{ !cancelled() }}
+        run: |
+          {
+            printf '%s\n' '## Pure Admin checks' '| Check | Outcome |' '| --- | --- |'
+            printf '%s\n' '| Locked install | ${{ steps.install.outcome }} |'
+            printf '%s\n' '| OA interaction tests | ${{ steps.test.outcome }} |'
+            printf '%s\n' '| Production entry types | ${{ steps.typecheck.outcome }} |'
+            printf '%s\n' '| Production build | ${{ steps.build.outcome }} |'
+          } >> "$GITHUB_STEP_SUMMARY"
   h5:
     runs-on: ubuntu-latest
     timeout-minutes: 15

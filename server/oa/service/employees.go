@@ -41,12 +41,16 @@ func (s *Service) employeeProjection(ctx context.Context, actor model.Actor) *go
 }
 
 func (s *Service) ListEmployees(ctx context.Context, actor model.Actor, p model.Pagination) (model.Page[model.EmployeeView], error) {
+	return s.listFilteredEmployees(ctx, actor, p, model.EmployeeFilter{})
+}
+
+func (s *Service) listFilteredEmployees(ctx context.Context, actor model.Actor, p model.Pagination, filter model.EmployeeFilter) (model.Page[model.EmployeeView], error) {
 	page := model.NewPage[model.EmployeeView](p)
-	if err := s.visibleEmployees(ctx, actor).Count(&page.Total).Error; err != nil {
+	if err := filterEmployees(s.visibleEmployees(ctx, actor), filter).Count(&page.Total).Error; err != nil {
 		return page, err
 	}
 	var employees []model.Employee
-	err := s.employeeProjection(ctx, actor).Order("id ASC").Limit(p.PageSize).Offset(p.Offset()).Find(&employees).Error
+	err := filterEmployees(s.employeeProjection(ctx, actor), filter).Order("id ASC").Limit(p.PageSize).Offset(p.Offset()).Find(&employees).Error
 	now := time.Now().In(businessTime)
 	for _, employee := range employees {
 		page.List = append(page.List, employeeView(employee, actor.CanReadSalary(), now))

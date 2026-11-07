@@ -2,7 +2,8 @@
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { ElAlert, ElButton } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
-import { listPage, saveAttachment } from './api'
+import { saveAttachment } from './api'
+import { listDepartments } from './business'
 import { employeeNavigation } from './navigation'
 import { useRouteWriteLock } from './use-route-write-lock'
 import { formatSalary, nameInitial } from './format'
@@ -22,18 +23,48 @@ navigation.employeeId = null
 const exporting = shallowRef(false)
 const exportError = shallowRef('')
 const page = shallowRef(1)
+const pageSize = shallowRef(20)
+const query = shallowRef('')
+const departmentId = shallowRef(null)
+const applied = shallowRef({ query: '', departmentId: null })
+const filterError = shallowRef('')
+const canFilterDepartment = computed(() => ['HR_ADMIN', 'HR_VIEWER'].includes(session.account?.user.role))
+const departments = useRemote((signal) => listDepartments(session.authorized, signal))
+if (canFilterDepartment.value) void departments.load()
 const adding = shallowRef(false)
 const editingDetail = shallowRef(false)
 const locked = computed(() => adding.value || editingDetail.value)
 const selfService = computed(() => ['EMPLOYEE', 'APPROVER'].includes(session.account?.user.role))
-const list = useRemote((signal) => session.authorized(listPage('/employees', page.value), { signal }))
+const list = useRemote((signal) => session.authorized('/employees/search', {
+  method: 'POST', data: { ...applied.value, page: page.value, pageSize: pageSize.value }, signal
+}))
 const { result, loading, error, load } = list
 
-watch([page, selectedId], () => {
+watch([page, pageSize, applied, selectedId], () => {
   if (selectedId.value === null) void load()
 }, { immediate: true })
 
 useRouteWriteLock(locked)
+
+function applyFilters() {
+  if (adding.value) return
+  const normalized = query.value.trim()
+  if ([...normalized].length > 100) {
+    filterError.value = '搜索内容不能超过 100 个字符。'
+    return
+  }
+  filterError.value = ''
+  exportError.value = ''
+  page.value = 1
+  applied.value = { query: normalized, departmentId: canFilterDepartment.value ? departmentId.value : null }
+}
+
+function resetFilters() {
+  if (adding.value) return
+  query.value = ''
+  departmentId.value = null
+  applyFilters()
+}
 
 function showList() {
   if (locked.value) return
@@ -52,7 +83,9 @@ async function exportEmployees() {
   exporting.value = true
   exportError.value = ''
   try {
-    const file = await session.authorized('/employees/export.xlsx', { binary: true })
+    const file = await session.authorized('/employees/export.xlsx', {
+      method: 'POST', data: applied.value, binary: true
+    })
     saveAttachment(file, '员工档案.xlsx')
   } catch (cause) {
     exportError.value = cause.errorCode === 'EXPORT_LIMIT'
@@ -86,7 +119,7 @@ async function exportEmployees() {
           :loading="exporting"
           :disabled="adding"
           @click="exportEmployees"
-        >导出 Excel</ElButton>
+        >按当前筛选导出</ElButton>
         <ElButton
         v-if="session.canWrite && !adding"
         type="primary"
@@ -107,11 +140,45 @@ async function exportEmployees() {
         </div>
         <ElButton :icon="Refresh" :disabled="loading || adding" @click="load">刷新</ElButton>
       </div>
+      <form class="oa-form oa-directory-filters" autocomplete="off" @submit.prevent="applyFilters">
+        <div class="oa-fields">
+          <label for="oa-employee-search">
+            搜索员工
+            <input id="oa-employee-search" v-model="query" type="search" placeholder="姓名、工号或部门名称" :disabled="adding">
+          </label>
+          <label v-if="canFilterDepartment" for="oa-department-filter">
+            部门筛选
+            <select id="oa-department-filter" v-model="departmentId" :disabled="adding || departments.loading.value || Boolean(departments.error.value)">
+              <option :value="null">全部部门</option>
+              <option v-for="department in departments.result.value || []" :key="department.id" :value="department.id">{{ department.name }}</option>
+            </select>
+          </label>
+        </div>
+        <ElAlert v-if="filterError" :title="filterError" type="warning" :closable="false" />
+        <div v-if="departments.error.value" class="oa-actions">
+          <span class="oa-muted" role="status">暂时无法读取部门选项。</span>
+          <ElButton :disabled="adding" @click="departments.load">重新加载部门</ElButton>
+        </div>
+        <div class="oa-actions">
+          <div class="oa-actions">
+            <ElButton native-type="submit" type="primary" :disabled="adding">搜索</ElButton>
+            <ElButton :disabled="adding" @click="resetFilters">清空</ElButton>
+          </div>
+          <label class="oa-filter" for="oa-employee-page-size">
+            每页条数
+            <select id="oa-employee-page-size" v-model="pageSize" :disabled="adding" @change="page = 1">
+              <option :value="20">20</option>
+              <option :value="50">50</option>
+              <option :value="100">100</option>
+            </select>
+          </label>
+        </div>
+      </form>
       <RemoteState
         :loading="loading"
         :error="error"
         :empty="Boolean(result && !result.list?.length)"
-        empty-text="暂无员工档案。"
+        :empty-text="applied.query || applied.departmentId ? '没有符合当前筛选条件的员工。' : '暂无员工档案。'"
         @retry="load"
       />
       <template v-if="!loading && !error && result?.list?.length">
@@ -147,15 +214,16 @@ async function exportEmployees() {
             </tbody>
           </table>
         </div>
-        <PageNav
+      </template>
+      <PageNav
+          v-if="result"
           :page="page"
           :total="result.total"
           :page-size="result.pageSize"
           label="员工列表分页"
-          :disabled="adding"
+          :disabled="adding || loading"
           @change="page = $event"
         />
-      </template>
     </section>
   </section>
 </template>

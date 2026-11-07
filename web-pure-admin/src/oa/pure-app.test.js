@@ -45,8 +45,13 @@ async function login() {
   input("oa-password", "fixture-password");
   await flushPromises();
   document.querySelector("form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
-  await vi.waitFor(() => expect(document.querySelector(".sidebar-container")).not.toBeNull());
-  await settle();
+  // The first navigation compiles both lazy-loaded Pure layout and employee page in Vitest.
+  await vi.waitFor(() => {
+    expect(router.currentRoute.value.name).toBe("OaEmployees");
+    expect(document.querySelector(".sidebar-container")).not.toBeNull();
+    expect(document.querySelector("#employees-heading")).not.toBeNull();
+    expect(document.querySelector('table[aria-label="员工列表"]')).not.toBeNull();
+  }, { timeout: 8_000 });
 }
 
 beforeEach(() => {
@@ -83,7 +88,8 @@ it("mounts the Pure layout, renders the allowed menus and enforces the memory se
     }
     if (expired) return json({ errorCode: "UNAUTHORIZED" }, 401);
     const row = role === "HR_VIEWER" ? employee : { ...employee, salaryCents };
-    if (url.endsWith("/employees?page=1&pageSize=20")) return json(page([row]));
+    if (url.endsWith("/employees/search")) return json(page([row]));
+    if (url.includes("/departments?")) return json(page([]));
     if (url.endsWith("/employees/11")) return json(row);
     if (url.endsWith("/employees/11/contracts?page=1&pageSize=20")) return json(page([contract]));
     return json({ errorCode: "NOT_FOUND" }, 404);
@@ -106,12 +112,13 @@ it("mounts the Pure layout, renders the allowed menus and enforces the memory se
     expect(appRoot.textContent).not.toContain("约定工资");
     expect(appRoot.textContent).not.toContain("新增员工");
 
-    const employeeRead = fetchMock.mock.calls.find(([url]) => url.includes("/employees?"));
+    const employeeRead = fetchMock.mock.calls.find(([url]) => url.endsWith("/employees/search"));
     expect(employeeRead[1].headers.get("x-token")).toBe(probe);
     expect(employeeRead[1]).toMatchObject({ credentials: "omit", cache: "no-store" });
     menu("移动审批入口");
     await settle();
     expect(appRoot.querySelector("a[href='./h5.html']")).not.toBeNull();
+    expect(appRoot.querySelector(".oa-mobile-entry.oa-pure.oa-surface")).not.toBeNull();
     expect(appRoot.querySelector(".tags-view").textContent).toContain("移动审批入口");
     expect(activeMenuLabels()).toEqual(["移动审批入口"]);
     tag("员工档案");
@@ -126,6 +133,7 @@ it("mounts the Pure layout, renders the allowed menus and enforces the memory se
     role = "APPROVER";
     await login();
     expect(appRoot.textContent).toContain("审批人");
+    expect(appRoot.querySelector("#oa-department-filter")).toBeNull();
     expect(appRoot.textContent).toContain("¥6,000.09");
     expect(appRoot.textContent).not.toContain("新增员工");
     button("查看档案").click();
@@ -152,7 +160,7 @@ it("mounts the Pure layout, renders the allowed menus and enforces the memory se
     app.unmount();
     appRoot.remove();
   }
-}, 12_000);
+}, 20_000);
 
 function submit() {
   document.querySelector("form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
@@ -232,7 +240,7 @@ it("integrates the Pure menus with employee versions, department edits, half-day
         headers: { "Content-Disposition": "attachment; filename=fixture.xlsx" }
       });
     }
-    if (path.startsWith("/employees?")) return json(page([row]));
+    if (path === "/employees/search") return json(page([row]));
     if (path.startsWith("/departments?")) return json(page([department]));
     if (path === "/departments/5" && options.method === "PUT") {
       department = { ...department, ...JSON.parse(options.body), version: 4 };
@@ -283,7 +291,7 @@ it("integrates the Pure menus with employee versions, department edits, half-day
   try {
     await settle();
     await login();
-    button("导出 Excel").click();
+    button("按当前筛选导出").click();
     await flushPromises();
     expect(downloads).toEqual(["员工档案.xlsx"]);
     const exportRead = fetchMock.mock.calls.find(([url]) => url.endsWith("/employees/export.xlsx"));
@@ -337,6 +345,14 @@ it("integrates the Pure menus with employee versions, department edits, half-day
     const departmentName = document.querySelector("form input");
     departmentName.value = "合成部门改名";
     departmentName.dispatchEvent(new Event("input", { bubbles: true }));
+    menu("员工档案");
+    tag("员工档案");
+    await flushPromises();
+    expect(router.currentRoute.value.name).toBe("OaDepartments");
+    expect(activeMenuLabels()).toEqual(["部门管理"]);
+    expect(button("刷新").disabled).toBe(true);
+    button("刷新").click();
+    expect(document.querySelector("form input").value).toBe("合成部门改名");
     submit();
     await settle();
     expect(appRoot.textContent).toContain("合成部门改名");
@@ -397,3 +413,122 @@ it("integrates the Pure menus with employee versions, department edits, half-day
     appRoot.remove();
   }
 }, 25_000);
+
+it("keeps applied search and export filters in request bodies and ignores superseded results", async () => {
+  const appRoot = document.createElement("div");
+  document.body.append(appRoot);
+  let finishSlow;
+  let slowSignal;
+  const actualClick = HTMLAnchorElement.prototype.click;
+  const filenames = [];
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function () {
+    if (this.href === "blob:fixture-filtered-export") filenames.push(this.download);
+    else actualClick.call(this);
+  });
+  vi.stubGlobal("URL", class extends URL {
+    static createObjectURL = () => "blob:fixture-filtered-export";
+    static revokeObjectURL = vi.fn();
+  });
+  const fetchMock = vi.fn(async (url, options) => {
+    if (url.endsWith("/auth/login")) return json({
+      token: "fixture-viewer", expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      user: { id: 9, username: "fixture", displayName: "合成账号", role: "HR_VIEWER", employeeId: null },
+      permissions: { canWriteEmployees: false, canReadSalary: false, canExportEmployees: true }
+    });
+    if (url.includes("/departments?")) return json(page([{ id: 5, name: "合成部门", parentId: null, version: 1 }]));
+    if (url.endsWith("/employees/export.xlsx")) {
+      return new Response("fixture-workbook", { headers: { "Content-Disposition": "attachment; filename=fixture.xlsx" } });
+    }
+    if (url.endsWith("/employees/search")) {
+      const body = JSON.parse(options.body);
+      const result = (list, total = 1) => json({ list, total, page: body.page, pageSize: body.pageSize });
+      if (body.query === "慢查询") {
+        slowSignal = options.signal;
+        return new Promise(resolve => {
+          finishSlow = () => resolve(result([{ ...employee, name: "旧响应" }]));
+        });
+      }
+      if (body.query === "没有匹配") return result([], 0);
+      return result([{ ...employee, name: body.query === "新查询" ? "最新响应" : employee.name }], 101);
+    }
+    return json({ errorCode: "NOT_FOUND" }, 404);
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  const search = () => fetchMock.mock.calls.filter(([url]) => url.endsWith("/employees/search"));
+  const lastBody = () => JSON.parse(search().at(-1)[1].body);
+  const select = (id, value) => {
+    const field = document.getElementById(id);
+    field.value = String(value);
+    field.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+  const query = (value) => input("oa-employee-search", value);
+
+  const app = createOaApp();
+  await router.isReady();
+  app.mount(appRoot);
+  try {
+    await vi.waitFor(() => expect(document.getElementById("oa-username")).not.toBeNull(), { timeout: 8_000 });
+    await login();
+    expect(lastBody()).toEqual({ query: "", departmentId: null, page: 1, pageSize: 20 });
+    button("下一页").click();
+    await flushPromises();
+    expect(lastBody().page).toBe(2);
+
+    select("oa-department-filter", 5);
+    query("  合成%_  ");
+    await flushPromises();
+    expect(lastBody().page).toBe(2);
+    submit();
+    await flushPromises();
+    expect(lastBody()).toEqual({ query: "合成%_", departmentId: 5, page: 1, pageSize: 20 });
+    button("下一页").click();
+    await flushPromises();
+    select("oa-employee-page-size", 50);
+    await flushPromises();
+    expect(lastBody()).toEqual({ query: "合成%_", departmentId: 5, page: 1, pageSize: 50 });
+
+    query("未应用条件");
+    await flushPromises();
+    button("按当前筛选导出").click();
+    await flushPromises();
+    const exportCall = fetchMock.mock.calls.find(([url]) => url.endsWith("/employees/export.xlsx"));
+    expect(exportCall[1].method).toBe("POST");
+    expect(JSON.parse(exportCall[1].body)).toEqual({ query: "合成%_", departmentId: 5 });
+    expect(filenames).toEqual(["员工档案.xlsx"]);
+    expect(appRoot.querySelector("table").textContent).not.toContain("约定工资");
+
+    query("慢查询");
+    await flushPromises();
+    submit();
+    await flushPromises();
+    query("新查询");
+    await flushPromises();
+    submit();
+    await flushPromises();
+    expect(slowSignal.aborted).toBe(true);
+    finishSlow();
+    await flushPromises();
+    expect(appRoot.querySelector("table").textContent).toContain("最新响应");
+    expect(appRoot.textContent).not.toContain("旧响应");
+
+    query("没有匹配");
+    await flushPromises();
+    submit();
+    await flushPromises();
+    expect(appRoot.textContent).toContain("没有符合当前筛选条件的员工");
+    button("清空").click();
+    await flushPromises();
+    expect(lastBody()).toEqual({ query: "", departmentId: null, page: 1, pageSize: 50 });
+    expect(appRoot.querySelector("#oa-employee-search").value).toBe("");
+    expect(router.currentRoute.value.fullPath).toBe("/employees");
+    expect(JSON.stringify(Object.entries(localStorage))).not.toMatch(/合成%_|未应用条件|慢查询|新查询/);
+    expect(sessionStorage.length).toBe(0);
+    // Let the download URL's cleanup timer run before restoring the URL mock.
+    await new Promise(resolve => setTimeout(resolve, 1_000));
+  } finally {
+    if (useUserStoreHook().account) useUserStoreHook().logOut();
+    await flushPromises();
+    app.unmount();
+    appRoot.remove();
+  }
+}, 20_000);

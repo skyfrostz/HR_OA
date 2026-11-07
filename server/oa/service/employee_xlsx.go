@@ -56,11 +56,19 @@ func (s *Service) EmployeeImportTemplate(actor model.Actor) ([]byte, error) {
 }
 
 func (s *Service) ExportEmployees(ctx context.Context, actor model.Actor) ([]byte, error) {
+	return s.ExportFilteredEmployees(ctx, actor, model.EmployeeFilter{})
+}
+
+func (s *Service) ExportFilteredEmployees(ctx context.Context, actor model.Actor, input model.EmployeeFilter) ([]byte, error) {
 	if model.RoleName(actor.AuthorityID) == "" {
 		return nil, ErrForbidden
 	}
+	filter, err := normalizeEmployeeFilter(input)
+	if err != nil {
+		return nil, err
+	}
 	var rows []model.Employee
-	err := s.employeeProjection(ctx, actor).Order("id ASC").Limit(maxExportRows + 1).Find(&rows).Error
+	err = filterEmployees(s.employeeProjection(ctx, actor), filter).Order("id ASC").Limit(maxExportRows + 1).Find(&rows).Error
 	if err != nil {
 		return nil, err
 	}

@@ -107,7 +107,53 @@ describe('mobile approval entry', () => {
   })
   afterEach(() => {
     wrapper.unmount()
+    vi.restoreAllMocks()
     vi.unstubAllGlobals()
+  })
+
+  it('refreshes an empty queue and keeps the active page when resuming foreground', async () => {
+    let assigned = false
+    let slow
+    let slowSignal
+    let secondPageCalls = 0
+    const mock = fixtureServer({
+      user: manager,
+      onRequest(path, options) {
+        if (path === '/tasks?page=1&pageSize=20') {
+          return json({ list: assigned ? [task] : [], total: assigned ? 21 : 0, page: 1, pageSize: 20 })
+        }
+        if (path === '/tasks?page=2&pageSize=20') {
+          if (++secondPageCalls === 2) {
+            slowSignal = options.signal
+            return new Promise((resolve) => { slow = resolve })
+          }
+          return json({ list: [task], total: 21, page: 2, pageSize: 20 })
+        }
+      }
+    })
+    await login(wrapper)
+    await clickTab(wrapper, '待办')
+    expect(wrapper.text()).toContain('当前没有待审批任务')
+    assigned = true
+    await findButton(wrapper, '刷新').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain(summary.title)
+
+    await findButton(wrapper, '下一页').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('第 2 / 2 页')
+    await findButton(wrapper, '刷新').trigger('click')
+    await flushPromises()
+    expect(slowSignal.aborted).toBe(false)
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    document.dispatchEvent(new Event('visibilitychange'))
+    await flushPromises()
+    expect(slowSignal.aborted).toBe(true)
+    slow(json({ list: [], total: 0, page: 2, pageSize: 20 }))
+    await flushPromises()
+    expect(wrapper.text()).toContain(summary.title)
+    expect(wrapper.text()).toContain('第 2 / 2 页')
+    expect(mock.mock.calls.filter(([url]) => url.includes('/tasks?page=2'))).toHaveLength(3)
   })
 
   it('submits leave with a frozen intent through a network failure and an in-progress replay', async () => {
