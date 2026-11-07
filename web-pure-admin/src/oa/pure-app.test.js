@@ -89,7 +89,7 @@ it("mounts the Pure layout, renders the allowed menus and enforces the memory se
     if (expired) return json({ errorCode: "UNAUTHORIZED" }, 401);
     const row = role === "HR_VIEWER" ? employee : { ...employee, salaryCents };
     if (url.endsWith("/employees/search")) return json(page([row]));
-    if (url.includes("/departments?")) return json(page([]));
+    if (url.includes("/departments?") || url.endsWith("/departments/tree")) return json(page([]));
     if (url.endsWith("/employees/11")) return json(row);
     if (url.endsWith("/employees/11/contracts?page=1&pageSize=20")) return json(page([contract]));
     return json({ errorCode: "NOT_FOUND" }, 404);
@@ -145,6 +145,8 @@ it("mounts the Pure layout, renders the allowed menus and enforces the memory se
     expired = true;
     button("返回员工列表").click();
     await settle();
+    button("刷新").click();
+    await settle();
     expect(router.currentRoute.value.name).toBe("Login");
     expect(appRoot.textContent).toContain("登录已失效");
     expect(document.cookie).toBe("");
@@ -163,7 +165,7 @@ it("mounts the Pure layout, renders the allowed menus and enforces the memory se
 }, 20_000);
 
 function submit() {
-  document.querySelector("form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  (document.querySelector("[role=dialog] form") || document.querySelector("form")).dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
 }
 
 function menu(label) {
@@ -205,6 +207,8 @@ it("integrates the Pure menus with employee versions, department edits, half-day
   let releaseWrite;
   let writeAttempts = 0;
   let leave = [];
+  let accountAttempts = 0;
+  let employeeAccount = { employeeId: 11, employmentStatus: "ACTIVE", version: 3, account: null };
   let importAttempts = 0;
   const confirmations = [];
   const downloads = [];
@@ -241,7 +245,7 @@ it("integrates the Pure menus with employee versions, department edits, half-day
       });
     }
     if (path === "/employees/search") return json(page([row]));
-    if (path.startsWith("/departments?")) return json(page([department]));
+    if (path.startsWith("/departments?") || path === "/departments/tree") return json(page([{ ...department, employeeCount: 1 }]));
     if (path === "/departments/5" && options.method === "PUT") {
       department = { ...department, ...JSON.parse(options.body), version: 4 };
       return json(department);
@@ -251,11 +255,24 @@ it("integrates the Pure menus with employee versions, department edits, half-day
         row = { ...row, version: 2 };
         return new Promise(resolve => { releaseWrite = () => resolve(json({ errorCode: "STALE_RECORD" }, 409)); });
       }
-      row = { ...row, ...JSON.parse(options.body), version: 3 };
+      row = { ...row, ...JSON.parse(options.body), version: row.version + 1 };
       return json(row);
     }
     if (path === "/employees/11") return json(row);
-    if (path.startsWith("/employees/11/contracts?")) return json(page([contract]));
+    if (path === "/employees/11/account") return json(employeeAccount);
+    if (path === "/employees/11/account/actions") {
+      const data = JSON.parse(options.body);
+      expect(data).toEqual({
+        action: "CREATE", version: 3, username: "fixture-worker", password: "only-in-request-26",
+        role: "EMPLOYEE", reason: "模拟开通"
+      });
+      accountAttempts++;
+      employeeAccount = { ...employeeAccount, version: 4, account: { id: 71, username: data.username, role: data.role, enabled: true } };
+      row = { ...row, version: 4, name: "其他操作者已更新的合成员工" };
+      throw new TypeError("simulated response loss after commit");
+    }
+    if (path.startsWith("/employees/11/contracts?")) return json(page([{ ...contract, id: 22, contractNo: "SIM-C22" }]));
+    if (path === "/contracts/21") return json({ ...contract, version: 1 });
     if (path.startsWith("/employees/11/annual-leave?")) return json(page(leave));
     if (path.startsWith("/employees/11/annual-leave/")) {
       const data = JSON.parse(options.body);
@@ -325,9 +342,11 @@ it("integrates the Pure menus with employee versions, department edits, half-day
     );
     expect(employeeWrites.map(([, options]) => JSON.parse(options.body).version)).toEqual([1, 2]);
 
+    button("年假记录").click();
+    await flushPromises();
     button("新增年假记录").click();
     await flushPromises();
-    const leaveInputs = [...document.querySelectorAll("form input")];
+    const leaveInputs = [...document.querySelectorAll("[role=dialog] form input")];
     for (const [field, value] of [[leaveInputs[1], "10.5"], [leaveInputs[2], "2"]]) {
       field.value = value;
       field.dispatchEvent(new Event("input", { bubbles: true }));
@@ -337,6 +356,43 @@ it("integrates the Pure menus with employee versions, department edits, half-day
     const leaveWrite = fetchMock.mock.calls.find(([url, options]) => url.includes("/annual-leave/") && options.method === "PUT");
     expect(JSON.parse(leaveWrite[1].body)).toEqual({ entitledHalfDays: 21, usedHalfDays: 4, note: "", version: 0 });
     expect(appRoot.textContent).toContain("8.5 天");
+
+    button("员工账号").click();
+    await flushPromises();
+    button("开通账号").click();
+    await flushPromises();
+    const accountForm = appRoot.querySelector('section[aria-labelledby="oa-account-heading"] form');
+    for (const [field, value] of [...accountForm.querySelectorAll("input, textarea")].map(
+      (field, index) => [field, ["fixture-worker", "only-in-request-26", "模拟开通"][index]]
+    )) {
+      field.value = value;
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    submit();
+    await flushPromises();
+    expect(accountAttempts).toBe(1);
+    expect(appRoot.textContent).toContain("无法确认操作结果");
+    expect(accountForm.querySelector('input[type="password"]').value).toBe("");
+    expect(button("年假记录").disabled).toBe(true);
+    button("重新读取账号状态").click();
+    await flushPromises();
+    expect(appRoot.textContent).toContain("fixture-worker");
+    expect(button("年假记录").disabled).toBe(false);
+    expect(accountAttempts).toBe(1);
+    expect(JSON.stringify(Object.entries(localStorage))).not.toContain("only-in-request-26");
+    expect(document.activeElement?.id).toBe("oa-account-heading");
+    expect(button("员工账号").getAttribute("aria-pressed")).toBe("true");
+    button("编辑员工").click();
+    await flushPromises();
+    expect(appRoot.querySelector("#employee-name").value).toBe("其他操作者已更新的合成员工");
+    input("employee-name", "账号开通后编辑档案");
+    submit();
+    await flushPromises();
+    const latestEmployeeWrite = fetchMock.mock.calls.filter(([url, options]) =>
+      url.endsWith("/employees/11") && options.method === "PUT"
+    ).at(-1);
+    expect(JSON.parse(latestEmployeeWrite[1].body).version).toBe(4);
+    expect(button("员工账号").getAttribute("aria-pressed")).toBe("true");
 
     menu("部门管理");
     await settle();
@@ -364,7 +420,7 @@ it("integrates the Pure menus with employee versions, department edits, half-day
     expect(appRoot.textContent).toContain("已逾期 2 天");
     button("查看合同").click();
     await settle();
-    expect(appRoot.textContent).toContain("SIM-C21");
+    expect(appRoot.querySelector("#oa-focused-contract")?.textContent).toBe("SIM-C21");
     expect(router.currentRoute.value.fullPath).toBe("/employees");
 
     menu("Excel 导入");
@@ -435,7 +491,7 @@ it("keeps applied search and export filters in request bodies and ignores supers
       user: { id: 9, username: "fixture", displayName: "合成账号", role: "HR_VIEWER", employeeId: null },
       permissions: { canWriteEmployees: false, canReadSalary: false, canExportEmployees: true }
     });
-    if (url.includes("/departments?")) return json(page([{ id: 5, name: "合成部门", parentId: null, version: 1 }]));
+    if (url.endsWith("/departments/tree")) return json(page([{ id: 5, name: "合成部门", parentId: null, version: 1 }]));
     if (url.endsWith("/employees/export.xlsx")) {
       return new Response("fixture-workbook", { headers: { "Content-Disposition": "attachment; filename=fixture.xlsx" } });
     }
@@ -525,6 +581,168 @@ it("keeps applied search and export filters in request bodies and ignores supers
     expect(sessionStorage.length).toBe(0);
     // Let the download URL's cleanup timer run before restoring the URL mock.
     await new Promise(resolve => setTimeout(resolve, 1_000));
+  } finally {
+    if (useUserStoreHook().account) useUserStoreHook().logOut();
+    await flushPromises();
+    app.unmount();
+    appRoot.remove();
+  }
+}, 20_000);
+
+it("submits PC approvals with the same key and body after a lost response, then keeps filters server-side", async () => {
+  const appRoot = document.createElement("div");
+  document.body.append(appRoot);
+  const calls = [];
+  const sample = {
+    id: 72, type: "GENERAL", title: "合成通用申请", applicantId: 9, applicantName: "合成账号",
+    status: "IN_REVIEW", currentStep: 1, form: { content: "合成正文" }, createdAt: "2026-11-07T02:00:00Z",
+    route: [{ step: 1, name: "一级审批", assigneeName: "模拟审批人" }], tasks: [], history: []
+  };
+  const fetchMock = vi.fn(async (url, options) => {
+    const path = url.replace("/api/oa/v1", "");
+    if (path === "/auth/login") return json({
+      token: "fixture-pc", expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      user: { id: 9, username: "fixture", displayName: "合成账号", role: "EMPLOYEE", employeeId: 11 },
+      permissions: { canSubmitRequests: true }
+    });
+    if (path === "/employees/search") return json(page([employee]));
+    if (path === "/request-templates") return json({ list: [{ type: "GENERAL", route: sample.route }] });
+    if (path.startsWith("/requests?")) return json(page(calls.length > 1 ? [sample] : []));
+    if (path === "/requests/72") return json(sample);
+    if (path === "/requests" && options.method === "POST") {
+      calls.push({ key: options.headers.get("Idempotency-Key"), body: JSON.parse(options.body) });
+      if (calls.length === 1) throw new TypeError("simulated response loss");
+      return json(sample, 201);
+    }
+    return json({ errorCode: "NOT_FOUND" }, 404);
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  const app = createOaApp();
+  await router.isReady();
+  app.mount(appRoot);
+  try {
+    await settle();
+    await login();
+    menu("审批中心");
+    await settle();
+    const [type, status] = appRoot.querySelectorAll(".pc-filters select");
+    type.value = "GENERAL";
+    status.value = "IN_REVIEW";
+    for (const field of [type, status]) field.dispatchEvent(new Event("change", { bubbles: true }));
+    button("筛选").click();
+    await flushPromises();
+    button("发起申请").click();
+    await flushPromises();
+    button("通用申请").click();
+    await flushPromises();
+    input("pc-request-title", sample.title);
+    input("pc-field-content", sample.form.content);
+    button("提交申请").click();
+    await flushPromises();
+    expect(calls).toHaveLength(1);
+    expect(appRoot.textContent).toContain("暂时无法确认提交结果");
+    await router.push({ name: "OaEmployees" });
+    expect(router.currentRoute.value.name).toBe("OaApprovals");
+    button("重试原提交").click();
+    await flushPromises();
+    expect(calls).toHaveLength(2);
+    expect(calls[0].key).toMatch(/^[0-9a-f]{32}$/);
+    expect(calls[1]).toEqual(calls[0]);
+    expect(calls[1].body).toEqual({ type: "GENERAL", title: sample.title, form: sample.form });
+    expect(appRoot.querySelector("#request-summary")?.textContent).toBe(sample.title);
+    expect(appRoot.querySelector(".pc-list")?.textContent).toContain(sample.title);
+    expect(appRoot.querySelectorAll(".pc-filters select")[0].value).toBe("GENERAL");
+    expect(fetchMock.mock.calls.filter(([url]) => url.includes("/requests?")).at(-1)[0]).toMatch(/type=GENERAL&status=IN_REVIEW/);
+    expect(router.currentRoute.value.fullPath).toBe("/approvals");
+    expect(JSON.stringify(Object.entries(localStorage))).not.toContain(sample.title);
+  } finally {
+    if (useUserStoreHook().account) useUserStoreHook().logOut();
+    await flushPromises();
+    app.unmount();
+    appRoot.remove();
+  }
+}, 20_000);
+
+it("refreshes the pending pane after a stale or successful decision and only backs up from a vanished page", async () => {
+  const appRoot = document.createElement("div");
+  document.body.append(appRoot);
+  const pending = new Set([72, 73, 74]);
+  const queries = [];
+  const title = id => "合成待办 " + id;
+  const date = "2026-11-07T02:00:00Z";
+  const task = id => ({ id, requestId: id, version: 1, stepName: "一级审批", status: "PENDING", assigneeId: 9 });
+  const detail = id => ({
+    id, type: "GENERAL", title: title(id), applicantId: 3, applicantName: "合成申请人",
+    status: pending.has(id) ? "IN_REVIEW" : "APPROVED",
+    form: { content: "合成正文" }, createdAt: date, route: [], tasks: pending.has(id) ? [task(id)] : [], history: []
+  });
+  vi.stubGlobal("fetch", vi.fn(async (url) => {
+    const path = url.replace("/api/oa/v1", "");
+    if (path === "/auth/login") return json({
+      token: "fixture-approver", expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      user: { id: 9, username: "fixture", displayName: "合成审批人", role: "APPROVER", employeeId: 11 },
+      permissions: { canApproveRequests: true }
+    });
+    if (path === "/employees/search") return json(page([employee]));
+    if (path.startsWith("/tasks?")) {
+      const params = new URLSearchParams(path.split("?")[1]);
+      const current = Number(params.get("page"));
+      queries.push({ page: current, type: params.get("type") });
+      const ids = (current === 3 ? [73] : [72, 74]).filter(id => pending.has(id));
+      return json({
+        list: ids.map(id => ({ ...task(id), requestTitle: title(id), requestType: "GENERAL", applicantName: "合成申请人", createdAt: date })),
+        total: 38 + pending.size, page: current, pageSize: 20
+      });
+    }
+    if (path.startsWith("/requests/")) return json(detail(Number(path.split("/").at(-1))));
+    if (path.endsWith("/actions")) {
+      const id = Number(path.split("/")[2]);
+      pending.delete(id);
+      return id === 73 ? json({ errorCode: "STALE_TASK" }, 409) : json(detail(id));
+    }
+    return json({ errorCode: "NOT_FOUND" }, 404);
+  }));
+  const app = createOaApp();
+  await router.isReady();
+  app.mount(appRoot);
+  const pane = () => appRoot.querySelector(".pc-list");
+  const open = id => [...pane().querySelectorAll(".pc-record-button")].find(row => row.textContent.includes(title(id))).click();
+  try {
+    await settle();
+    await login();
+    menu("审批中心");
+    await settle();
+    const filter = appRoot.querySelector(".pc-filters select");
+    filter.value = "GENERAL";
+    filter.dispatchEvent(new Event("change", { bubbles: true }));
+    button("筛选").click();
+    await flushPromises();
+    button("下一页").click();
+    await flushPromises();
+    button("下一页").click();
+    await flushPromises();
+
+    open(73);
+    await flushPromises();
+    button("通过").click();
+    await flushPromises();
+    button("确认通过").click();
+    await flushPromises();
+    expect(appRoot.textContent).toContain("待办已变化");
+    expect(queries.slice(-2)).toEqual([{ page: 3, type: "GENERAL" }, { page: 2, type: "GENERAL" }]);
+    expect(pane().textContent).not.toContain(title(73));
+    expect(pane().textContent).toContain(title(72));
+
+    open(72);
+    await flushPromises();
+    button("通过").click();
+    await flushPromises();
+    button("确认通过").click();
+    await flushPromises();
+    expect(appRoot.textContent).toContain("已记录「通过」");
+    expect(queries.at(-1)).toEqual({ page: 2, type: "GENERAL" });
+    expect(pane().textContent).not.toContain(title(72));
+    expect(pane().textContent).toContain(title(74));
   } finally {
     if (useUserStoreHook().account) useUserStoreHook().logOut();
     await flushPromises();

@@ -27,12 +27,16 @@ func migrate(db *gorm.DB) error {
 	if err := identity.AutoMigrate(&system.SysAuthority{}, &system.SysUser{}, &userAuthority{}); err != nil {
 		return err
 	}
-	return db.AutoMigrate(
+	if err := db.AutoMigrate(
 		&model.Department{}, &model.Employee{}, &model.Contract{}, &model.ContractFile{},
 		&model.AnnualLeave{}, &model.EmployeeImport{},
 		&model.ApprovalRequest{}, &model.ApprovalTask{}, &model.ApprovalAction{},
 		&model.WorkflowIntent{}, &model.NotificationEvent{}, &model.MockNotification{},
-	)
+		&model.AuditEvent{}, &model.AccountSession{}, &model.WorkflowGuard{}, &model.ApprovalHandoff{},
+	); err != nil {
+		return err
+	}
+	return db.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.WorkflowGuard{ID: 1}).Error
 }
 
 func seed(db *gorm.DB, password string) error {

@@ -3,6 +3,7 @@ package model
 import "time"
 
 type DepartmentInput struct {
+	Reason   string `json:"reason"`
 	Name     string `json:"name"`
 	ParentID *uint  `json:"parentId"`
 }
@@ -25,6 +26,7 @@ type EmployeeEdit struct {
 }
 
 type AnnualLeaveInput struct {
+	Reason           string `json:"reason"`
 	EntitledHalfDays *int   `json:"entitledHalfDays"`
 	UsedHalfDays     *int   `json:"usedHalfDays"`
 	Note             string `json:"note"`

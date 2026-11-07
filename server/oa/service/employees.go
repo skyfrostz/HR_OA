@@ -3,13 +3,13 @@ package service
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"strings"
 	"time"
 	"unicode/utf8"
 
 	"github.com/flipped-aurora/gin-vue-admin/server/oa/model"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var businessTime = time.FixedZone("CST", 8*60*60)
@@ -76,11 +76,18 @@ func (s *Service) CreateEmployee(ctx context.Context, actor model.Actor, input m
 	if err != nil {
 		return model.EmployeeView{}, err
 	}
+	reason, err := auditReason(input.Reason, "新增员工档案")
+	if err != nil {
+		return model.EmployeeView{}, err
+	}
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := resolveEmployeeDepartment(tx, &employee); err != nil {
+		if err := resolveEmployeeDepartment(tx, actor, reason, &employee); err != nil {
 			return err
 		}
-		return createError(tx.Create(&employee).Error)
+		if err := createError(tx.Create(&employee).Error); err != nil {
+			return err
+		}
+		return writeEmployeeAudit(tx, actor, "CREATE", reason, nil, employee)
 	}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		return model.EmployeeView{}, recordWriteError(err)
@@ -100,11 +107,23 @@ func (s *Service) EditEmployee(ctx context.Context, actor model.Actor, id uint, 
 	if err != nil {
 		return model.EmployeeView{}, err
 	}
+	reason, err := auditReason(input.Reason, "更新员工档案")
+	if err != nil {
+		return model.EmployeeView{}, err
+	}
 	employee.ID, employee.Version = id, input.Version+1
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := resolveEmployeeDepartment(tx, &employee); err != nil {
+		if err := resolveEmployeeDepartment(tx, actor, reason, &employee); err != nil {
 			return err
 		}
+		var before model.Employee
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Take(&before, id).Error; err != nil {
+			return queryError(err)
+		}
+		if before.Version != input.Version {
+			return ErrStaleRecord
+		}
+		employee.EmploymentStatus = before.EmploymentStatus
 		updated := tx.Model(&model.Employee{}).Where("id = ? AND version = ?", id, input.Version).
 			Updates(map[string]any{
 				"employee_no": employee.EmployeeNo, "name": employee.Name, "birth_date": employee.BirthDate,
@@ -114,17 +133,10 @@ func (s *Service) EditEmployee(ctx context.Context, actor model.Actor, id uint, 
 		if updated.Error != nil {
 			return createError(updated.Error)
 		}
-		if updated.RowsAffected == 1 {
-			return nil
+		if updated.RowsAffected != 1 {
+			return ErrStaleRecord
 		}
-		var existing model.Employee
-		if err := tx.Select("id").Take(&existing, id).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return ErrNotFound
-			}
-			return err
-		}
-		return ErrStaleRecord
+		return writeEmployeeAudit(tx, actor, "UPDATE", reason, &before, employee)
 	}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		return model.EmployeeView{}, recordWriteError(err)
@@ -148,7 +160,7 @@ func employeeFromInput(input model.EmployeeInput, now time.Time) (model.Employee
 
 	return model.Employee{
 		EmployeeNo: number, Name: name, Department: department, DepartmentID: input.DepartmentID,
-		BirthDate: birth, HireDate: hire, SalaryCents: *input.SalaryCents, Version: 1,
+		BirthDate: birth, HireDate: hire, SalaryCents: *input.SalaryCents, Version: 1, EmploymentStatus: model.EmploymentActive,
 	}, nil
 }
 
@@ -168,7 +180,7 @@ func parseDate(value string) (time.Time, error) {
 func employeeView(employee model.Employee, salaryAllowed bool, now time.Time) model.EmployeeView {
 	view := model.EmployeeView{
 		ID: employee.ID, EmployeeNo: employee.EmployeeNo, Name: employee.Name, Department: employee.Department,
-		DepartmentID: employee.DepartmentID, Version: employee.Version,
+		DepartmentID: employee.DepartmentID, Version: employee.Version, EmploymentStatus: employee.EmploymentStatus,
 		BirthDate: employee.BirthDate.Format(dateLayout), HireDate: employee.HireDate.Format(dateLayout),
 		Age: completedYears(employee.BirthDate, now), TenureYears: completedYears(employee.HireDate, now),
 	}

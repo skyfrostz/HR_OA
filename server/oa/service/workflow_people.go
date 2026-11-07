@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	system "github.com/flipped-aurora/gin-vue-admin/server/model/system"
 	"github.com/flipped-aurora/gin-vue-admin/server/oa/model"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -22,11 +23,12 @@ func workflowUsers(db *gorm.DB) *gorm.DB {
 	return db.Table("sys_users AS u").
 		Select("u.id, u.username, u.nick_name AS display_name, u.authority_id").
 		Joins("JOIN sys_authorities AS a ON a.authority_id = u.authority_id AND a.deleted_at IS NULL").
-		Where("u.deleted_at IS NULL AND u.enable = ?", 1)
+		Where("u.deleted_at IS NULL AND u.enable = ?", 1).
+		Where("NOT EXISTS (SELECT 1 FROM oa_employees AS bound WHERE bound.user_id = u.id AND bound.deleted_at IS NULL AND bound.employment_status = ?)", model.EmploymentOffboarded)
 }
 
 func boundWorkflowUsers(db *gorm.DB) *gorm.DB {
-	return workflowUsers(db).Joins("JOIN oa_employees AS e ON e.user_id = u.id AND e.deleted_at IS NULL")
+	return workflowUsers(db).Joins("JOIN oa_employees AS e ON e.user_id = u.id AND e.deleted_at IS NULL AND e.employment_status = ?", model.EmploymentActive)
 }
 
 func currentSubmitter(tx *gorm.DB, id uint) (workflowUser, error) {
@@ -51,26 +53,29 @@ func currentApprover(db *gorm.DB, id uint, requireBinding bool) (workflowUser, e
 	return person, err
 }
 
-func developmentRoute(db *gorm.DB, applicantID uint, locked bool) ([]model.RouteStep, error) {
-	query := workflowUsers(db).
-		Where("u.username IN ? AND u.authority_id = ?", []string{"manager", "finance"}, model.ApproverRole)
-	if locked {
-		query = query.Clauses(clause.Locking{Strength: "SHARE"})
-	}
-	var people []workflowUser
-	if err := query.Find(&people).Error; err != nil {
+func developmentRoute(db *gorm.DB, applicantID uint) ([]model.RouteStep, error) {
+	var defaults []system.SysUser
+	if err := db.Select("id", "username").Where("username IN ?", []string{"manager", "finance"}).Find(&defaults).Error; err != nil {
 		return nil, err
 	}
-	found := make(map[string]workflowUser, 2)
-	for _, person := range people {
-		if _, duplicate := found[person.Username]; duplicate || person.ID == applicantID {
-			return nil, ErrRouteUnavailable
-		}
-		found[person.Username] = person
-	}
-	manager, finance := found["manager"], found["finance"]
-	if manager.ID == 0 || finance.ID == 0 {
+	if len(defaults) != 2 {
 		return nil, ErrRouteUnavailable
+	}
+	byName := make(map[string]uint, 2)
+	for _, user := range defaults {
+		byName[user.Username] = user.ID
+	}
+	handoffs, err := loadHandoffs(db)
+	if err != nil {
+		return nil, err
+	}
+	manager, err := resolveRouteAssignee(db, handoffs, byName["manager"], applicantID)
+	if err != nil {
+		return nil, err
+	}
+	finance, err := resolveRouteAssignee(db, handoffs, byName["finance"], applicantID)
+	if err != nil {
+		return nil, err
 	}
 	return []model.RouteStep{
 		{Step: 1, Name: "负责人审批", AssigneeID: manager.ID, AssigneeName: manager.DisplayName},
@@ -84,7 +89,7 @@ func (s *Service) RequestTemplates(ctx context.Context, actor model.Actor) (mode
 	}
 	// Approvers on the demonstration route can browse templates. A submission
 	// still rejects a route that would include the applicant.
-	steps, err := developmentRoute(s.db.WithContext(ctx), 0, false)
+	steps, err := developmentRoute(s.db.WithContext(ctx), 0)
 	if err != nil {
 		return model.TemplatesView{}, err
 	}

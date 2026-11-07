@@ -62,6 +62,14 @@ func fail(c *gin.Context, err error) {
 		Fail(c, http.StatusConflict, "TRANSFER_LIMIT", "已达到转交次数上限")
 	case errors.Is(err, service.ErrStaleRecord):
 		Fail(c, http.StatusConflict, "STALE_RECORD", "记录已变更，请刷新")
+	case errors.Is(err, service.ErrInvalidState):
+		Fail(c, http.StatusConflict, "INVALID_STATE", "当前状态不允许此操作")
+	case errors.Is(err, service.ErrAccountConflict):
+		Fail(c, http.StatusConflict, "ACCOUNT_CONFLICT", "账号名称或绑定冲突")
+	case errors.Is(err, service.ErrHandoffRequired):
+		Fail(c, http.StatusConflict, "HANDOFF_REQUIRED", "请指定审批交接人")
+	case errors.Is(err, service.ErrHandoffConflict):
+		Fail(c, http.StatusConflict, "HANDOFF_CONFLICT", "交接人不可用或与申请冲突")
 	case errors.Is(err, service.ErrImportInvalid):
 		Fail(c, http.StatusConflict, "IMPORT_INVALID", "预览含错误或没有可导入数据")
 	case errors.Is(err, service.ErrImportConflict):

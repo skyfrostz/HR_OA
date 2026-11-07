@@ -10,9 +10,13 @@ import (
 	"gorm.io/gorm"
 )
 
-func (s *Service) MyRequests(ctx context.Context, actor model.Actor, p model.Pagination) (model.Page[model.RequestSummary], error) {
+func (s *Service) MyRequests(ctx context.Context, actor model.Actor, p model.Pagination, filter model.WorkflowFilter) (model.Page[model.RequestSummary], error) {
 	page := model.NewPage[model.RequestSummary](p)
 	query := s.db.WithContext(ctx).Model(&model.ApprovalRequest{}).Where("applicant_id = ?", actor.UserID)
+	query, err := applyWorkflowFilter(query, filter, "", "created_at")
+	if err != nil {
+		return page, err
+	}
 	if err := query.Count(&page.Total).Error; err != nil {
 		return page, err
 	}
@@ -33,8 +37,8 @@ func (s *Service) Request(ctx context.Context, actor model.Actor, id uint) (mode
 		err := tx.Where(`id = ? AND (
 			applicant_id = ?
 			OR EXISTS (SELECT 1 FROM oa_tasks AS t WHERE t.request_id = oa_requests.id AND t.assignee_id = ?)
-			OR EXISTS (SELECT 1 FROM oa_request_actions AS a WHERE a.request_id = oa_requests.id AND a.actor_id = ? AND a.action = ?)
-		)`, id, actor.UserID, actor.UserID, actor.UserID, model.ActionTransfer).Take(&request).Error
+			OR EXISTS (SELECT 1 FROM oa_request_actions AS a WHERE a.request_id = oa_requests.id AND ((a.actor_id = ? AND a.action = ?) OR (a.previous_assignee_id = ? AND a.action = ?)))
+		)`, id, actor.UserID, actor.UserID, actor.UserID, model.ActionTransfer, actor.UserID, model.ActionHandoff).Take(&request).Error
 		if err != nil {
 			return queryError(err)
 		}
@@ -44,11 +48,15 @@ func (s *Service) Request(ctx context.Context, actor model.Actor, id uint) (mode
 	return detail, err
 }
 
-func (s *Service) PendingTasks(ctx context.Context, actor model.Actor, p model.Pagination) (model.Page[model.TaskView], error) {
+func (s *Service) PendingTasks(ctx context.Context, actor model.Actor, p model.Pagination, filter model.WorkflowFilter) (model.Page[model.TaskView], error) {
 	page := model.NewPage[model.TaskView](p)
 	query := s.db.WithContext(ctx).Table("oa_tasks AS t").Joins("JOIN oa_requests AS r ON r.id = t.request_id").
 		Where("t.assignee_id = ? AND t.status = ? AND r.status = ? AND r.current_step = t.step",
 			actor.UserID, model.TaskPending, model.RequestInReview)
+	query, err := applyWorkflowFilter(query, filter, "r.", "t.created_at")
+	if err != nil {
+		return page, err
+	}
 	if err := query.Count(&page.Total).Error; err != nil {
 		return page, err
 	}
@@ -58,7 +66,7 @@ func (s *Service) PendingTasks(ctx context.Context, actor model.Actor, p model.P
 		RequestType   string
 		ApplicantName string
 	}
-	err := query.Select("t.*, r.title AS request_title, r.type AS request_type, r.applicant_name").
+	err = query.Select("t.*, r.title AS request_title, r.type AS request_type, r.applicant_name").
 		Order("t.id DESC").Limit(p.PageSize).Offset(p.Offset()).Scan(&records).Error
 	if err != nil {
 		return page, err
@@ -70,10 +78,14 @@ func (s *Service) PendingTasks(ctx context.Context, actor model.Actor, p model.P
 	return page, nil
 }
 
-func (s *Service) TaskHistory(ctx context.Context, actor model.Actor, p model.Pagination) (model.Page[model.ActionView], error) {
+func (s *Service) TaskHistory(ctx context.Context, actor model.Actor, p model.Pagination, filter model.WorkflowFilter) (model.Page[model.ActionView], error) {
 	page := model.NewPage[model.ActionView](p)
 	query := s.db.WithContext(ctx).Table("oa_request_actions AS a").Joins("JOIN oa_requests AS r ON r.id = a.request_id").
 		Where("a.actor_id = ? AND a.action IN ?", actor.UserID, []string{model.ActionApprove, model.ActionReject, model.ActionTransfer})
+	query, err := applyWorkflowFilter(query, filter, "r.", "a.created_at")
+	if err != nil {
+		return page, err
+	}
 	if err := query.Count(&page.Total).Error; err != nil {
 		return page, err
 	}
@@ -82,7 +94,7 @@ func (s *Service) TaskHistory(ctx context.Context, actor model.Actor, p model.Pa
 		RequestTitle string
 		RequestType  string
 	}
-	err := query.Select("a.*, r.title AS request_title, r.type AS request_type").
+	err = query.Select("a.*, r.title AS request_title, r.type AS request_type").
 		Order("a.id DESC").Limit(p.PageSize).Offset(p.Offset()).Scan(&records).Error
 	if err != nil {
 		return page, err

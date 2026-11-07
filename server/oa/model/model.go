@@ -30,27 +30,31 @@ func RoleName(authorityID uint) string {
 
 type Employee struct {
 	global.GVA_MODEL
-	UserID       *uint     `gorm:"uniqueIndex"`
-	EmployeeNo   string    `gorm:"size:64;not null;uniqueIndex"`
-	Name         string    `gorm:"size:128;not null"`
-	BirthDate    time.Time `gorm:"type:date;not null"`
-	HireDate     time.Time `gorm:"type:date;not null"`
-	Department   string    `gorm:"size:128;not null"`
-	DepartmentID *uint     `gorm:"index"`
-	Version      int       `gorm:"not null;default:1"`
-	SalaryCents  int64     `gorm:"not null"`
+	EmploymentStatus string    `gorm:"size:16;not null;default:ACTIVE"`
+	UserID           *uint     `gorm:"uniqueIndex"`
+	EmployeeNo       string    `gorm:"size:64;not null;uniqueIndex"`
+	Name             string    `gorm:"size:128;not null"`
+	BirthDate        time.Time `gorm:"type:date;not null"`
+	HireDate         time.Time `gorm:"type:date;not null"`
+	Department       string    `gorm:"size:128;not null"`
+	DepartmentID     *uint     `gorm:"index"`
+	Version          int       `gorm:"not null;default:1"`
+	SalaryCents      int64     `gorm:"not null"`
 }
 
 func (Employee) TableName() string { return "oa_employees" }
 
 type Contract struct {
 	global.GVA_MODEL
-	EmployeeID         uint      `gorm:"not null;index"`
-	Employee           Employee  `gorm:"foreignKey:EmployeeID"`
-	ContractNo         string    `gorm:"size:64;not null;uniqueIndex"`
-	StartDate          time.Time `gorm:"type:date;not null"`
-	EndDate            time.Time `gorm:"type:date;not null"`
-	Status             string    `gorm:"size:16;not null"`
+	EmployeeID         uint       `gorm:"not null;index"`
+	Employee           Employee   `gorm:"foreignKey:EmployeeID"`
+	ContractNo         string     `gorm:"size:64;not null;uniqueIndex"`
+	StartDate          time.Time  `gorm:"type:date;not null"`
+	EndDate            time.Time  `gorm:"type:date;not null"`
+	Status             string     `gorm:"size:16;not null"`
+	Version            int        `gorm:"not null;default:1"`
+	SignedDate         *time.Time `gorm:"type:date"`
+	TerminatedDate     *time.Time `gorm:"type:date"`
 	PreviousContractID *uint
 	PreviousContract   *Contract      `gorm:"foreignKey:PreviousContractID"`
 	Files              []ContractFile `gorm:"foreignKey:ContractID"`

@@ -98,6 +98,7 @@ restore() {
     local employee_state="${2:?Specify the synthetic employee fixture state}"
     local approval_state="${3:?Specify the synthetic approval fixture state}"
     local m3_state="${4:-}"
+    local m4_state="${5:-}"
     local -a extra_checks=()
     local project address image mysql_id api_id
     validate_backup "$archive"
@@ -106,6 +107,10 @@ restore() {
     if [[ -n "$m3_state" ]]; then
         test -r "$m3_state"
         extra_checks+=(--m3-state "$m3_state")
+    fi
+    if [[ -n "$m4_state" ]]; then
+        test -r "$m4_state"
+        extra_checks+=(--m4-state "$m4_state")
     fi
     set -a
     source ./.env
@@ -152,7 +157,7 @@ case "${1:-}" in
     backup) shift; backup "$@" ;;
     restore) shift; restore "$@" ;;
     *)
-        printf 'Usage: %s backup [private-parent] | restore <backup-directory> <employee-state.json> <approval-state.json> [m3-state.json]\n' "$0" >&2
+        printf 'Usage: %s backup [private-parent] | restore <backup-directory> <employee-state.json> <approval-state.json> [m3-state.json] [m4-state.json]\n' "$0" >&2
         exit 2
         ;;
 esac

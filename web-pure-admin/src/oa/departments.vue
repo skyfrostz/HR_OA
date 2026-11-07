@@ -6,12 +6,15 @@ import { listPage } from "./api";
 import { listDepartments, writeNeedsRefresh, type Department, type Page } from "./business";
 import { useSession } from "./session";
 import { useRemote } from "./use-remote";
+import AuditHistory from "./audit-history.vue";
 import PageNav from "./page-nav.vue";
 import RemoteState from "./remote-state.vue";
 
 const session = useSession();
 const canManage = computed(() => session.account?.permissions.canManageDepartments === true);
 const page = shallowRef(1);
+const historyDepartment = shallowRef<Department | null>(null);
+const auditRevision = shallowRef(0);
 const editor = shallowRef<Department | "new" | null>(null);
 const form = reactive({ name: "", parentId: null as number | null });
 const busy = shallowRef(false);
@@ -30,7 +33,7 @@ const eligibleParents = computed(() => {
 const columns: TableColumnList = [
   { label: "部门名称", prop: "name", minWidth: 160 },
   { label: "上级部门", slot: "parent", minWidth: 160 },
-  { label: "操作", slot: "actions", width: 100, hide: () => !canManage.value }
+  { label: "操作", slot: "actions", minWidth: 190 }
 ];
 
 watch(page, directory.load, { immediate: true });
@@ -77,6 +80,7 @@ async function save() {
     });
     editor.value = null;
     feedback.value = "部门已保存。";
+    auditRevision.value++;
     await refresh();
   } catch (cause) {
     needsRefresh.value = writeNeedsRefresh(cause);
@@ -132,9 +136,10 @@ async function save() {
         :data="directory.result.value.list" :columns="columns" row-key="id"
       >
         <template #parent="{ row }">{{ row.parentId ? (parentNames.get(row.parentId) || '—') : '—' }}</template>
-        <template #actions="{ row }"><ElButton v-if="canManage" text type="primary" :disabled="Boolean(editor)" @click="begin(row)">编辑部门</ElButton></template>
+        <template #actions="{ row }"><ElButton text type="primary" :disabled="Boolean(editor)" @click="historyDepartment = row">变更历史</ElButton><ElButton v-if="canManage" text type="primary" :disabled="Boolean(editor)" @click="begin(row)">编辑部门</ElButton></template>
       </pure-table>
       <PageNav v-if="directory.result.value" :page="page" :total="directory.result.value.total" :page-size="directory.result.value.pageSize" label="部门分页" :disabled="Boolean(editor)" @change="page = $event" />
     </section>
+    <AuditHistory v-if="historyDepartment" :key="historyDepartment.id" :department-id="historyDepartment.id" :revision="auditRevision" title="部门变更历史" />
   </section>
 </template>

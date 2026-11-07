@@ -30,8 +30,12 @@ watch([days, page], load, { immediate: true });
 async function open(row: ContractReminder) {
   const navigation = employeeNavigation();
   navigation.employeeId = row.employeeId;
+  navigation.contractId = row.contractId;
   const failure = await router.push({ name: "OaEmployees" });
-  if (failure) navigation.employeeId = null;
+  if (failure) {
+    navigation.employeeId = null;
+    navigation.contractId = null;
+  }
 }
 
 function due(daysRemaining: number) {

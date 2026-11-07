@@ -3,6 +3,7 @@ import User from "~icons/ri/team-line";
 import Department from "~icons/ri/organization-chart";
 import Excel from "~icons/ri/file-excel-2-line";
 import Reminder from "~icons/ri/calendar-event-line";
+import Approval from "~icons/ri/task-line";
 import Mobile from "~icons/ri/smartphone-line";
 
 export default {
@@ -37,10 +38,16 @@ export default {
       meta: { title: "合同到期提醒", icon: Reminder, rank: 4 }
     },
     {
+      path: "/approvals",
+      name: "OaApprovals",
+      component: () => import("@/oa/approvals/workspace.vue"),
+      meta: { title: "审批中心", icon: Approval, roles: ["EMPLOYEE", "APPROVER"], rank: 5 }
+    },
+    {
       path: "/mobile-approvals",
       name: "OaMobileApprovals",
       component: () => import("@/oa/mobile-approvals.vue"),
-      meta: { title: "移动审批入口", icon: Mobile, rank: 5 }
+      meta: { title: "移动审批入口", icon: Mobile, rank: 6 }
     }
   ]
 } satisfies RouteRecordRaw;

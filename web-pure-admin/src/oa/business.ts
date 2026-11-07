@@ -7,7 +7,7 @@ export type Department = { id: number; name: string; parentId: number | null; ve
 export type Employee = {
   id: number; employeeNo: string; name: string; department: string; departmentId?: number;
   birthDate: string; hireDate: string; age: number; tenureYears: number;
-  salaryCents?: number; version?: number;
+  salaryCents?: number; version?: number; employmentStatus?: "ACTIVE" | "OFFBOARDED";
 };
 
 export type AnnualLeave = {

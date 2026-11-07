@@ -1,6 +1,7 @@
 :root {
   --oa-primary: #3563e9;
   --oa-primary-hover: #264ec6;
+  --oa-accent-text: var(--oa-primary-hover);
   --oa-tint: #edf2ff;
   --oa-text: #182238;
   --oa-muted: #667085;
@@ -10,5 +11,7 @@
 }
 
 html.dark {
-  --oa-accent-text: color-mix(in srgb, var(--el-color-primary) 35%, var(--el-text-color-primary));
+  --oa-muted: var(--el-text-color-regular);
+  --oa-line: var(--el-border-color-lighter);
+  --oa-accent-text: color-mix(in srgb, var(--el-color-primary) 25%, var(--el-text-color-primary));
 }

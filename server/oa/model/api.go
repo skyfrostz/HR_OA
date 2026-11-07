@@ -3,9 +3,10 @@ package model
 import "time"
 
 type Actor struct {
-	UserID      uint
-	AuthorityID uint
-	EmployeeID  *uint
+	SessionEpoch uint64
+	UserID       uint
+	AuthorityID  uint
+	EmployeeID   *uint
 }
 
 func (a Actor) CanWrite() bool { return a.AuthorityID == HRAdmin }
@@ -55,6 +56,7 @@ type LoginView struct {
 }
 
 type EmployeeInput struct {
+	Reason       string `json:"reason"`
 	EmployeeNo   string `json:"employeeNo"`
 	Name         string `json:"name"`
 	BirthDate    string `json:"birthDate"`
@@ -65,20 +67,22 @@ type EmployeeInput struct {
 }
 
 type EmployeeView struct {
-	ID           uint   `json:"id"`
-	EmployeeNo   string `json:"employeeNo"`
-	Name         string `json:"name"`
-	BirthDate    string `json:"birthDate"`
-	HireDate     string `json:"hireDate"`
-	Department   string `json:"department"`
-	DepartmentID *uint  `json:"departmentId"`
-	Version      int    `json:"version"`
-	Age          int    `json:"age"`
-	TenureYears  int    `json:"tenureYears"`
-	SalaryCents  *int64 `json:"salaryCents,omitempty"`
+	EmploymentStatus string `json:"employmentStatus"`
+	ID               uint   `json:"id"`
+	EmployeeNo       string `json:"employeeNo"`
+	Name             string `json:"name"`
+	BirthDate        string `json:"birthDate"`
+	HireDate         string `json:"hireDate"`
+	Department       string `json:"department"`
+	DepartmentID     *uint  `json:"departmentId"`
+	Version          int    `json:"version"`
+	Age              int    `json:"age"`
+	TenureYears      int    `json:"tenureYears"`
+	SalaryCents      *int64 `json:"salaryCents,omitempty"`
 }
 
 type ContractInput struct {
+	Reason             string `json:"reason"`
 	ContractNo         string `json:"contractNo"`
 	StartDate          string `json:"startDate"`
 	EndDate            string `json:"endDate"`
@@ -87,6 +91,9 @@ type ContractInput struct {
 }
 
 type ContractView struct {
+	Version            int        `json:"version"`
+	SignedDate         *string    `json:"signedDate"`
+	TerminatedDate     *string    `json:"terminatedDate"`
 	ID                 uint       `json:"id"`
 	EmployeeID         uint       `json:"employeeId"`
 	ContractNo         string     `json:"contractNo"`

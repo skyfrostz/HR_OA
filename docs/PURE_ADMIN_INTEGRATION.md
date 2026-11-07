@@ -25,3 +25,7 @@ The user also authorized remaining planned local features. Frontend follows `M3_
 ## Status
 
 Source import and application adaptation complete. The actual Pure PC entry, independent H5, M3 APIs, browser flows, and isolated backup restore passed local acceptance on 2026-11-07. A sidebar highlight defect during rejected navigation was fixed and retested in the final Web image. See `VALIDATION_M3.md` for evidence and limitations, `PURE_ADMIN_CHANGES.md` for the source inventory, and `PURE_M3_SOURCE_SHA256SUMS` for the final accepted file hashes. Earlier M2 validation remains historical.
+
+## M4 extension
+
+The M4 PC entry reuses Pure TableBar and pure-table, an authorized department tree, employee Drawer with grouped content, and the existing OA H5 approval code adapted to desktop. Account, contract and audit UI use the M4 API contract. Source provenance and the UI selection are recorded in `M4_SOURCE_REUSE.md` and `M4_UI_DESIGN.md`; validation status is in `VALIDATION_M4.md`. No second authentication system or workflow engine was added.

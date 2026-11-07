@@ -26,6 +26,9 @@ func (s *Service) SubmitRequest(ctx context.Context, actor model.Actor, key stri
 	var applicant workflowUser
 	return s.withIntent(ctx, actor.UserID, "POST /api/oa/v1/requests", key, normalized, http.StatusCreated,
 		func(tx *gorm.DB) error {
+			if err := checkWorkflowSession(tx, actor); err != nil {
+				return err
+			}
 			var err error
 			applicant, err = currentSubmitter(tx, actor.UserID)
 			return err
@@ -49,7 +52,7 @@ func submitRequest(tx *gorm.DB, applicant workflowUser, input model.SubmitInput)
 		}
 	}
 
-	steps, err := developmentRoute(tx, applicant.ID, true)
+	steps, err := developmentRoute(tx, applicant.ID)
 	if err != nil {
 		return model.RequestDetail{}, err
 	}
@@ -91,6 +94,9 @@ func (s *Service) ActOnTask(ctx context.Context, actor model.Actor, taskID uint,
 	var approver workflowUser
 	return s.withIntent(ctx, actor.UserID, fmt.Sprintf("POST /api/oa/v1/tasks/%d/actions", taskID), key, normalized, http.StatusOK,
 		func(tx *gorm.DB) error {
+			if err := checkWorkflowSession(tx, actor); err != nil {
+				return err
+			}
 			var err error
 			approver, err = currentApprover(tx, actor.UserID, false)
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -194,12 +200,15 @@ func applyTaskAction(tx *gorm.DB, request *model.ApprovalRequest, task model.App
 			request.Status, request.CurrentStep = model.Approved, nil
 			return request.ApplicantID, model.RequestApproved, nil
 		}
-		if _, err := currentApprover(tx, next.AssigneeID, false); err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				err = ErrRouteUnavailable
-			}
+		handoffs, err := loadHandoffs(tx)
+		if err != nil {
 			return 0, "", err
 		}
+		person, err := resolveRouteAssignee(tx, handoffs, next.AssigneeID, request.ApplicantID)
+		if err != nil {
+			return 0, "", err
+		}
+		next.AssigneeID, next.AssigneeName = person.ID, person.DisplayName
 		if err := createPendingTask(tx, request.ID, *next, now); err != nil {
 			return 0, "", err
 		}

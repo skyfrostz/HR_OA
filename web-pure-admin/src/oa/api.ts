@@ -29,14 +29,16 @@ export type RequestOptions = {
   signal?: AbortSignal;
   sessionSignal?: AbortSignal;
   binary?: boolean;
+  idempotencyKey?: string;
 };
 
 export async function request<T>(
   path: string,
-  { method = "GET", data, file, token, signal, sessionSignal, binary = false }: RequestOptions = {}
+  { method = "GET", data, file, token, signal, sessionSignal, binary = false, idempotencyKey }: RequestOptions = {}
 ): Promise<T> {
   const headers = new Headers();
   let body: BodyInit | undefined;
+  if (idempotencyKey) headers.set("Idempotency-Key", idempotencyKey);
   if (token) headers.set("x-token", token);
   if (file) {
     const form = new FormData();

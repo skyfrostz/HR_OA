@@ -7,6 +7,7 @@ import (
 
 	"github.com/flipped-aurora/gin-vue-admin/server/oa/model"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func (s *Service) AnnualLeave(ctx context.Context, actor model.Actor, employeeID uint, p model.Pagination) (model.Page[model.AnnualLeaveView], error) {
@@ -39,14 +40,28 @@ func (s *Service) WriteAnnualLeave(ctx context.Context, actor model.Actor, emplo
 	if err := s.checkVisibleEmployee(ctx, actor, employeeID); err != nil {
 		return model.AnnualLeaveView{}, err
 	}
+	reason, err := auditReason(input.Reason, "设置年假台账")
+	if err != nil {
+		return model.AnnualLeaveView{}, err
+	}
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		event := model.AuditEvent{Type: model.AuditAnnualLeave, EmployeeID: &employeeID, Reason: reason}
 		if *input.Version == 0 {
 			if err := createError(tx.Create(&row).Error); errors.Is(err, ErrConflict) {
 				return ErrStaleRecord
 			} else if err != nil {
 				return err
 			}
-			return nil
+			event.Action = "CREATE"
+			return writeAudit(tx, actor, event, nil, leaveAuditFields(row))
+		}
+		var before model.AnnualLeave
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Take(&before, "employee_id = ? AND `year` = ? AND version = ?", employeeID, year, *input.Version).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrStaleRecord
+			}
+			return err
 		}
 		updated := tx.Model(&model.AnnualLeave{}).
 			Where("employee_id = ? AND `year` = ? AND version = ?", employeeID, year, *input.Version).
@@ -60,7 +75,11 @@ func (s *Service) WriteAnnualLeave(ctx context.Context, actor model.Actor, emplo
 		if updated.RowsAffected != 1 {
 			return ErrStaleRecord
 		}
-		return tx.Take(&row, "employee_id = ? AND `year` = ?", employeeID, year).Error
+		if err := tx.Take(&row, "employee_id = ? AND `year` = ?", employeeID, year).Error; err != nil {
+			return err
+		}
+		event.Action = "UPDATE"
+		return writeAudit(tx, actor, event, leaveAuditFields(before), leaveAuditFields(row))
 	})
 	return annualLeaveView(row), recordWriteError(err)
 }

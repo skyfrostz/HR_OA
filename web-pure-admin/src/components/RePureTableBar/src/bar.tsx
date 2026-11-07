@@ -44,6 +44,7 @@ const props = {
     type: Array as PropType<TableColumnList>,
     default: () => []
   },
+  showPinning: { type: Boolean, default: true },
   isExpandAll: {
     type: Boolean,
     default: true
@@ -58,7 +59,7 @@ export default defineComponent({
   name: "PureTableBar",
   props,
   emits: ["refresh", "fullscreen"],
-  setup(props, { emit, slots, attrs }) {
+  setup(props, { emit, slots, attrs, expose }) {
     const size = ref("default");
     const loading = ref(false);
     const checkAll = ref(true);
@@ -71,9 +72,9 @@ export default defineComponent({
         ? !column.hide
         : !(isFunction(column?.hide) && column?.hide())
     );
-    let checkColumnList = getKeyList(cloneDeep(props?.columns), "label");
-    const checkedColumns = ref(getKeyList(cloneDeep(filterColumns), "label"));
     const dynamicColumns = ref(cloneDeep(props?.columns));
+    const checkColumnList = computed(() => getKeyList(dynamicColumns.value, "label"));
+    const checkedColumns = ref(getKeyList(cloneDeep(filterColumns), "label"));
 
     const getDropdownItemStyle = computed(() => {
       return s => {
@@ -125,6 +126,11 @@ export default defineComponent({
       emit("fullscreen", isFullscreen.value);
     }
 
+    function exitFullscreen() {
+      if (isFullscreen.value) onFullscreen();
+    }
+    expose({ exitFullscreen });
+
     function toggleRowExpansionAll(data, isExpansion) {
       data.forEach(item => {
         props.tableRef.toggleRowExpansion(item, isExpansion);
@@ -135,7 +141,7 @@ export default defineComponent({
     }
 
     function handleCheckAllChange(val: CheckboxValueType) {
-      checkedColumns.value = val ? checkColumnList : [];
+      checkedColumns.value = val ? checkColumnList.value : [];
       isIndeterminate.value = false;
       dynamicColumns.value.map(column =>
         val ? (column.hide = false) : (column.hide = true)
@@ -145,9 +151,9 @@ export default defineComponent({
     function handleCheckedColumnsChange(value: CheckboxValueType[]) {
       checkedColumns.value = value;
       const checkedCount = value.length;
-      checkAll.value = checkedCount === checkColumnList.length;
+      checkAll.value = checkedCount === checkColumnList.value.length;
       isIndeterminate.value =
-        checkedCount > 0 && checkedCount < checkColumnList.length;
+        checkedCount > 0 && checkedCount < checkColumnList.value.length;
     }
 
     function handleCheckColumnListChange(
@@ -168,12 +174,10 @@ export default defineComponent({
       }
     }
 
-    async function onReset() {
+    function onReset() {
       checkAll.value = true;
       isIndeterminate.value = false;
       dynamicColumns.value = cloneDeep(props?.columns);
-      checkColumnList = [];
-      checkColumnList = await getKeyList(cloneDeep(props?.columns), "label");
       checkedColumns.value = getKeyList(cloneDeep(filterColumns), "label");
     }
 
@@ -209,10 +213,12 @@ export default defineComponent({
         const wrapper: HTMLElement = (
           instance?.proxy?.$refs[`GroupRef${unref(props.tableKey)}`] as any
         ).$el.firstElementChild;
+        if (!wrapper || Sortable.get(wrapper)) return;
         Sortable.create(wrapper, {
-          animation: 300,
+          animation: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 180,
           handle: ".drag-btn",
           onEnd: ({ newIndex, oldIndex, item }) => {
+            if (oldIndex == null || newIndex == null || oldIndex === newIndex) return;
             const targetThElem = item;
             const wrapperElem = targetThElem.parentNode as HTMLElement;
             const oldColumn = dynamicColumns.value[oldIndex];
@@ -260,12 +266,10 @@ export default defineComponent({
 
     const reference = {
       reference: () => (
-        <SettingIcon
-          class={["w-4", iconClass.value]}
-          v-tippy={rendTippyProps(
-            transformI18n($t("tableBar.pureColumnSettings"))
-          )}
-        />
+        <button type="button" class="oa-tablebar-control" aria-label={transformI18n($t("tableBar.pureColumnSettings"))}
+          v-tippy={rendTippyProps(transformI18n($t("tableBar.pureColumnSettings")))}>
+          <SettingIcon aria-hidden="true" class={["w-4", iconClass.value]} />
+        </button>
       )
     };
 
@@ -273,6 +277,9 @@ export default defineComponent({
       <>
         <div
           {...attrs}
+          onKeydown={(event: KeyboardEvent) => {
+            if (event.key === "Escape" && isFullscreen.value) exitFullscreen();
+          }}
           class={[
             "w-full",
             "px-2",
@@ -283,7 +290,7 @@ export default defineComponent({
               : "mt-2"
           ]}
         >
-          <div class="flex justify-between w-full h-15 p-4">
+          <div class="oa-tablebar-toolbar">
             {slots?.title ? (
               slots.title()
             ) : (
@@ -310,31 +317,28 @@ export default defineComponent({
                   <el-divider direction="vertical" />
                 </>
               ) : null}
-              <RefreshIcon
-                class={[
-                  "w-4",
-                  iconClass.value,
-                  loading.value ? "animate-spin" : ""
-                ]}
-                v-tippy={rendTippyProps(
-                  transformI18n($t("tableBar.pureRefresh"))
-                )}
-                onClick={() => onReFresh()}
-              />
+              <button type="button" class="oa-tablebar-control" aria-label={transformI18n($t("tableBar.pureRefresh"))}
+                v-tippy={rendTippyProps(transformI18n($t("tableBar.pureRefresh")))} onClick={onReFresh}>
+                <RefreshIcon aria-hidden="true" class={["w-4", iconClass.value, loading.value ? "animate-spin" : ""]} />
+              </button>
               <el-divider direction="vertical" />
               <el-dropdown
                 v-slots={dropdown}
+                teleported={!isFullscreen.value}
                 trigger="click"
                 v-tippy={rendTippyProps(
                   transformI18n($t("tableBar.pureDensity"))
                 )}
               >
-                <CollapseIcon class={["w-4", iconClass.value]} />
+                <button type="button" class="oa-tablebar-control" aria-label={transformI18n($t("tableBar.pureDensity"))}>
+                  <CollapseIcon aria-hidden="true" class={["w-4", iconClass.value]} />
+                </button>
               </el-dropdown>
               <el-divider direction="vertical" />
 
               <el-popover
                 v-slots={reference}
+                teleported={!isFullscreen.value}
                 placement="bottom-start"
                 popper-style={{ padding: 0 }}
                 width="245"
@@ -365,10 +369,10 @@ export default defineComponent({
                         alignment="flex-start"
                         size={0}
                       >
-                        {checkColumnList.map((item, index) => {
+                        {checkColumnList.value.map((item) => {
                           const { fixed, left, right } = isFixedColumn(item);
                           return (
-                            <div class="flex items-center">
+                            <div class="flex items-center" key={item}>
                               <DragIcon
                                 class={[
                                   "drag-btn w-4 mr-2",
@@ -379,7 +383,7 @@ export default defineComponent({
                                 }) => rowDrop(event)}
                               />
                               <el-checkbox
-                                key={index}
+                                key={item}
                                 label={item}
                                 value={item}
                                 onChange={value =>
@@ -393,6 +397,7 @@ export default defineComponent({
                                   {transformI18n(item)}
                                 </span>
                               </el-checkbox>
+                              {props.showPinning ? <>
                               <iconify-icon-offline
                                 class={[
                                   "ml-2",
@@ -436,6 +441,7 @@ export default defineComponent({
                                   )
                                 }
                               />
+                              </> : null}
                             </div>
                           );
                         })}
@@ -446,16 +452,12 @@ export default defineComponent({
               </el-popover>
               <el-divider direction="vertical" />
 
-              <iconify-icon-offline
-                class={["w-4", iconClass.value]}
-                icon={isFullscreen.value ? ExitFullscreen : Fullscreen}
-                v-tippy={
-                  isFullscreen.value
-                    ? transformI18n($t("tableBar.pureExitFullScreen"))
-                    : transformI18n($t("tableBar.pureFullScreen"))
-                }
-                onClick={() => onFullscreen()}
-              />
+              <button type="button" class="oa-tablebar-control" aria-pressed={isFullscreen.value}
+                aria-label={transformI18n($t(isFullscreen.value ? "tableBar.pureExitFullScreen" : "tableBar.pureFullScreen"))}
+                v-tippy={rendTippyProps(transformI18n($t(isFullscreen.value ? "tableBar.pureExitFullScreen" : "tableBar.pureFullScreen")))}
+                onClick={onFullscreen}>
+                <iconify-icon-offline aria-hidden="true" class={["w-4", iconClass.value]} icon={isFullscreen.value ? ExitFullscreen : Fullscreen} />
+              </button>
             </div>
           </div>
           {slots.default({

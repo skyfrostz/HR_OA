@@ -1,93 +1,91 @@
 <script setup>
-import { reactive, shallowRef, onMounted, useTemplateRef } from 'vue'
+import { computed, onMounted, reactive, shallowRef, useTemplateRef } from 'vue'
 import { ElAlert, ElButton } from 'element-plus'
-import { contractStatuses } from './format'
-import { useSession } from './session'
+import { useVersionedWrite } from './use-versioned-write'
 
 const props = defineProps({
   path: { type: String, required: true },
-  previous: { type: Object, default: null },
+  kind: { type: String, required: true },
+  contract: { type: Object, default: null },
   refresh: { type: Function, required: true }
 })
-const emit = defineEmits(['created', 'cancel'])
-const session = useSession()
+const emit = defineEmits(['saved', 'cancel', 'reconciled'])
 const heading = useTemplateRef('heading')
-onMounted(() => heading.value.focus())
-const form = reactive({ contractNo: '', startDate: '', endDate: '', status: 'DRAFT' })
-const busy = shallowRef(false)
-const error = shallowRef('')
-const requiresRefresh = shallowRef(false)
+onMounted(() => heading.value?.focus())
+const labels = { create: '新建合同', renew: '续约合同', edit: '编辑草稿', sign: '登记签署', terminate: '终止合同' }
+const changesState = computed(() => ['sign', 'terminate'].includes(props.kind))
+const initial = props.kind === 'edit' ? props.contract : null
+const form = reactive({ contractNo: initial?.contractNo || '', startDate: initial?.startDate || '', endDate: initial?.endDate || '', effectiveDate: '', reason: '' })
+const validation = shallowRef('')
+const write = useVersionedWrite()
+const { busy, blocked, error } = write
+const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 
 async function submit() {
-  if (busy.value || requiresRefresh.value || !session.canWrite) return
-  const contractNo = form.contractNo.trim()
-  const { startDate, endDate, status } = form
-
-  if (!contractNo || !startDate || !endDate || startDate > endDate) {
-    error.value = '请填写合同编号和有效日期，结束日期不能早于开始日期。'
-    return
-  }
-
-  busy.value = true
-  error.value = ''
-  const data = { contractNo, startDate, endDate, status }
-  if (props.previous) data.previousContractId = props.previous.id
-  try {
-    await session.authorized(props.path, { method: 'POST', data })
-    emit('created')
-  } catch (cause) {
-    requiresRefresh.value = !cause.status || cause.status >= 500
-    error.value = requiresRefresh.value
-      ? '无法确认合同是否已保存。请核对合同列表后再提交。'
-      : cause.message
-  } finally {
-    busy.value = false
-  }
-}
-async function refresh() {
-  if (busy.value) return
-  busy.value = true
-  try {
-    if (await props.refresh()) {
-      requiresRefresh.value = false
-      error.value = '已刷新合同台账，请核对合同编号后再操作。'
+  if (busy.value || blocked.value) return
+  validation.value = ''
+  const reason = form.reason.trim()
+  if (!reason || [...reason].length > 500) { validation.value = '请填写 1–500 字的操作原因。'; return }
+  let path = props.path
+  let method = 'POST'
+  let data
+  if (changesState.value) {
+    if (!form.effectiveDate || form.effectiveDate > today) { validation.value = '日期不得晚于今天。'; return }
+    if (props.kind === 'terminate' && (form.effectiveDate < props.contract.startDate || (props.contract.signedDate && form.effectiveDate < props.contract.signedDate))) {
+      validation.value = '终止日期不得早于合同开始日期或已登记的签署日期。'
+      return
     }
-  } finally {
-    busy.value = false
+    path = '/contracts/' + props.contract.id + '/actions'
+    data = { action: props.kind === 'sign' ? 'SIGN' : 'TERMINATE', version: props.contract.version, reason, effectiveDate: form.effectiveDate }
+  } else {
+    const contractNo = form.contractNo.trim()
+    if (!contractNo || !form.startDate || !form.endDate || form.startDate > form.endDate) {
+      validation.value = '请填写合同编号和有效日期，结束日期不能早于开始日期。'
+      return
+    }
+    data = { contractNo, startDate: form.startDate, endDate: form.endDate, reason }
+    if (props.kind === 'edit') {
+      path = '/contracts/' + props.contract.id
+      method = 'PUT'
+      data.version = props.contract.version
+    } else {
+      data.status = 'DRAFT'
+      if (props.kind === 'renew') data.previousContractId = props.contract.id
+    }
   }
+  const result = await write.send(path, method, data)
+  if (result) emit('saved', result, labels[props.kind] + '已保存。')
+}
+
+function reload() {
+  return write.reconcile(
+    () => props.refresh(['create', 'renew'].includes(props.kind) ? form.contractNo.trim() : ''),
+    previous => emit('reconciled', previous)
+  )
 }
 </script>
 
 <template>
   <section class="oa-inline-form" aria-labelledby="contract-form-heading">
-    <h3 id="contract-form-heading" ref="heading" tabindex="-1">{{ previous ? '续约合同' : '新建合同' }}</h3>
-    <p v-if="previous" class="oa-muted">上一份合同：{{ previous.contractNo }}</p>
-    <ElAlert v-if="error" :title="error" type="error" :closable="false" show-icon />
+    <h3 id="contract-form-heading" ref="heading" tabindex="-1">{{ labels[kind] }}</h3>
+    <p v-if="contract" class="oa-muted">{{ kind === 'renew' ? '续约来源：' : '合同编号：' }}{{ contract.contractNo }}</p>
+    <p v-if="kind === 'sign'" class="oa-muted">登记已线下签署的合同及日期。</p>
+    <p v-if="kind === 'renew'" class="oa-muted">续约会创建关联草稿，原合同与附件将保留。</p>
+    <ElAlert v-if="validation || error" :title="validation || error" type="error" :closable="false" show-icon />
     <form class="oa-form" autocomplete="off" @submit.prevent="submit">
       <div class="oa-fields">
-        <label for="contract-number">
-          合同编号
-          <input id="contract-number" v-model="form.contractNo" required :disabled="busy || requiresRefresh" />
-        </label>
-        <label for="contract-start">
-          开始日期
-          <input id="contract-start" v-model="form.startDate" type="date" required :disabled="busy || requiresRefresh">
-        </label>
-        <label for="contract-end">
-          结束日期
-          <input id="contract-end" v-model="form.endDate" type="date" required :disabled="busy || requiresRefresh">
-        </label>
-        <label for="contract-status">
-          签约状态
-          <select id="contract-status" v-model="form.status" :disabled="busy || requiresRefresh">
-            <option v-for="(status, value) in contractStatuses" :key="value" :value="value">{{ status.label }}</option>
-          </select>
-        </label>
+        <template v-if="!changesState">
+          <label for="contract-number">合同编号<input id="contract-number" v-model="form.contractNo" required :disabled="busy || Boolean(blocked)"></label>
+          <label for="contract-start">开始日期<input id="contract-start" v-model="form.startDate" type="date" required :disabled="busy || Boolean(blocked)"></label>
+          <label for="contract-end">结束日期<input id="contract-end" v-model="form.endDate" type="date" required :disabled="busy || Boolean(blocked)"></label>
+        </template>
+        <label v-else>{{ kind === 'sign' ? '签署日期' : '终止日期' }}<input v-model="form.effectiveDate" type="date" :max="today" required :disabled="busy || Boolean(blocked)"></label>
+        <label>操作原因<textarea v-model="form.reason" maxlength="500" required placeholder="请勿填写密码、证件号码等敏感信息" :disabled="busy || Boolean(blocked)" /></label>
       </div>
       <div class="oa-actions">
-        <ElButton v-if="requiresRefresh" :loading="busy" @click="refresh">重新读取合同台账</ElButton>
-        <ElButton v-else native-type="submit" type="primary" :loading="busy">保存合同</ElButton>
-        <ElButton :disabled="busy || requiresRefresh" @click="emit('cancel')">取消</ElButton>
+        <ElButton v-if="blocked" :loading="busy" @click="reload">重新读取合同</ElButton>
+        <ElButton v-else native-type="submit" type="primary" :loading="busy">{{ changesState ? '确认' + labels[kind] : '保存合同' }}</ElButton>
+        <ElButton :disabled="busy || Boolean(blocked)" @click="emit('cancel')">取消</ElButton>
       </div>
     </form>
   </section>

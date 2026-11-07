@@ -21,19 +21,35 @@ const (
 	tokenTTL    = 30 * time.Minute
 )
 
+type oaClaims struct {
+	gva.CustomClaims
+	SessionEpoch uint64 `json:"oaSessionEpoch,omitempty"`
+}
+
+type loginAccount struct {
+	system.SysUser
+	SessionEpoch uint64
+}
+
+func identityQuery(db *gorm.DB) *gorm.DB {
+	return db.Model(&system.SysUser{}).
+		Joins("LEFT JOIN oa_account_sessions AS sessions ON sessions.user_id = sys_users.id").
+		Where("NOT EXISTS (SELECT 1 FROM oa_employees AS e WHERE e.user_id = sys_users.id AND e.deleted_at IS NULL AND e.employment_status = ?)", model.EmploymentOffboarded)
+}
+
 func (s *Service) Login(ctx context.Context, input model.LoginInput) (model.LoginView, error) {
 	username := strings.TrimSpace(input.Username)
 	if username == "" || len(username) > 128 || len(input.Password) == 0 || len(input.Password) > 72 {
 		return model.LoginView{}, ErrInvalid
 	}
 
-	var matches []system.SysUser
-	err := s.db.WithContext(ctx).Select("id", "uuid", "username", "nick_name", "password", "authority_id", "enable").
+	var matches []loginAccount
+	err := identityQuery(s.db.WithContext(ctx)).Select("sys_users.id, uuid, username, nick_name, password, authority_id, enable, COALESCE(sessions.epoch, 0) AS session_epoch").
 		Where("username = ?", username).Limit(2).Find(&matches).Error
 	if err != nil {
 		return model.LoginView{}, err
 	}
-	var user system.SysUser
+	var user loginAccount
 	hash := s.dummyHash
 	if len(matches) == 1 {
 		user = matches[0]
@@ -43,13 +59,13 @@ func (s *Service) Login(ctx context.Context, input model.LoginInput) (model.Logi
 		return model.LoginView{}, ErrUnauthorized
 	}
 
-	_, session, err := s.session(ctx, user)
+	_, session, err := s.session(ctx, user.SysUser)
 	if err != nil {
 		return model.LoginView{}, err
 	}
 	now := time.Now().UTC()
 	expiry := jwt.NewNumericDate(now.Add(tokenTTL))
-	claims := gva.CustomClaims{
+	claims := oaClaims{SessionEpoch: user.SessionEpoch, CustomClaims: gva.CustomClaims{
 		BaseClaims: gva.BaseClaims{
 			UUID: user.UUID, ID: user.ID, Username: user.Username,
 			NickName: user.NickName, AuthorityId: user.AuthorityId,
@@ -58,7 +74,7 @@ func (s *Service) Login(ctx context.Context, input model.LoginInput) (model.Logi
 			Issuer: tokenIssuer, Audience: jwt.ClaimStrings{"GVA"}, Subject: strconv.FormatUint(uint64(user.ID), 10),
 			IssuedAt: jwt.NewNumericDate(now), NotBefore: jwt.NewNumericDate(now), ExpiresAt: expiry,
 		},
-	}
+	}}
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(s.signingKey)
 	return model.LoginView{SessionView: session, Token: token, ExpiresAt: expiry.Time.UTC()}, err
 }
@@ -67,7 +83,7 @@ func (s *Service) Authenticate(ctx context.Context, raw string) (model.Actor, mo
 	if raw == "" || len(raw) > 4096 {
 		return model.Actor{}, model.SessionView{}, ErrUnauthorized
 	}
-	var claims gva.CustomClaims
+	var claims oaClaims
 	token, err := jwt.ParseWithClaims(raw, &claims, func(*jwt.Token) (any, error) { return s.signingKey, nil },
 		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}), jwt.WithIssuer(tokenIssuer),
 		jwt.WithAudience("GVA"), jwt.WithExpirationRequired(), jwt.WithIssuedAt())
@@ -77,16 +93,18 @@ func (s *Service) Authenticate(ctx context.Context, raw string) (model.Actor, mo
 		return model.Actor{}, model.SessionView{}, ErrUnauthorized
 	}
 
-	var user system.SysUser
-	err = s.db.WithContext(ctx).Select("id", "uuid", "username", "nick_name", "authority_id", "enable").
-		Take(&user, "id = ? AND uuid = ? AND enable = ?", userID, claims.UUID, 1).Error
+	var user loginAccount
+	err = identityQuery(s.db.WithContext(ctx)).Select("sys_users.id, uuid, username, nick_name, authority_id, enable, COALESCE(sessions.epoch, 0) AS session_epoch").
+		Take(&user, "sys_users.id = ? AND uuid = ? AND enable = ? AND COALESCE(sessions.epoch, 0) = ?", userID, claims.UUID, 1, claims.SessionEpoch).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		err = ErrUnauthorized
 	}
 	if err != nil {
 		return model.Actor{}, model.SessionView{}, err
 	}
-	return s.session(ctx, user)
+	actor, session, err := s.session(ctx, user.SysUser)
+	actor.SessionEpoch = claims.SessionEpoch
+	return actor, session, err
 }
 
 func (s *Service) session(ctx context.Context, user system.SysUser) (model.Actor, model.SessionView, error) {

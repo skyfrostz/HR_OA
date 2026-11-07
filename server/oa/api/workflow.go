@@ -59,6 +59,10 @@ func (a *API) SubmitRequest(c *gin.Context) {
 // @Produce json
 // @Param page query int false "页码" default(1) minimum(1)
 // @Param pageSize query int false "每页条数" default(20) minimum(1) maximum(100)
+// @Param type query string false "申请类型"
+// @Param status query string false "申请状态"
+// @Param fromDate query string false "起始业务日期 YYYY-MM-DD"
+// @Param toDate query string false "结束业务日期 YYYY-MM-DD"
 // @Success 200 {object} response.Response{data=model.Page[model.RequestSummary]}
 // @Failure 400,401,403,500 {object} response.Response{data=errorData}
 // @Router /api/oa/v1/requests [get]
@@ -67,7 +71,11 @@ func (a *API) MyRequests(c *gin.Context) {
 	if !ok {
 		return
 	}
-	result, err := a.service.MyRequests(c.Request.Context(), Actor(c), page)
+	filter, ok := workflowFilter(c)
+	if !ok {
+		return
+	}
+	result, err := a.service.MyRequests(c.Request.Context(), Actor(c), page, filter)
 	if err != nil {
 		fail(c, err)
 		return
@@ -104,6 +112,10 @@ func (a *API) RequestDetail(c *gin.Context) {
 // @Produce json
 // @Param page query int false "页码" default(1) minimum(1)
 // @Param pageSize query int false "每页条数" default(20) minimum(1) maximum(100)
+// @Param type query string false "申请类型"
+// @Param status query string false "申请状态"
+// @Param fromDate query string false "起始业务日期 YYYY-MM-DD"
+// @Param toDate query string false "结束业务日期 YYYY-MM-DD"
 // @Success 200 {object} response.Response{data=model.Page[model.TaskView]}
 // @Failure 400,401,403,500 {object} response.Response{data=errorData}
 // @Router /api/oa/v1/tasks [get]
@@ -112,7 +124,11 @@ func (a *API) PendingTasks(c *gin.Context) {
 	if !ok {
 		return
 	}
-	result, err := a.service.PendingTasks(c.Request.Context(), Actor(c), page)
+	filter, ok := workflowFilter(c)
+	if !ok {
+		return
+	}
+	result, err := a.service.PendingTasks(c.Request.Context(), Actor(c), page, filter)
 	if err != nil {
 		fail(c, err)
 		return
@@ -127,6 +143,10 @@ func (a *API) PendingTasks(c *gin.Context) {
 // @Produce json
 // @Param page query int false "页码" default(1) minimum(1)
 // @Param pageSize query int false "每页条数" default(20) minimum(1) maximum(100)
+// @Param type query string false "申请类型"
+// @Param status query string false "申请状态"
+// @Param fromDate query string false "起始业务日期 YYYY-MM-DD"
+// @Param toDate query string false "结束业务日期 YYYY-MM-DD"
 // @Success 200 {object} response.Response{data=model.Page[model.ActionView]}
 // @Failure 400,401,403,500 {object} response.Response{data=errorData}
 // @Router /api/oa/v1/tasks/history [get]
@@ -135,7 +155,11 @@ func (a *API) TaskHistory(c *gin.Context) {
 	if !ok {
 		return
 	}
-	result, err := a.service.TaskHistory(c.Request.Context(), Actor(c), page)
+	filter, ok := workflowFilter(c)
+	if !ok {
+		return
+	}
+	result, err := a.service.TaskHistory(c.Request.Context(), Actor(c), page, filter)
 	if err != nil {
 		fail(c, err)
 		return
@@ -245,4 +269,21 @@ func sendIntent(c *gin.Context, result service.IntentResult, err error) {
 		c.Header("Idempotency-Replayed", "true")
 	}
 	succeed(c, result.Status, result.Body)
+}
+
+func workflowFilter(c *gin.Context) (model.WorkflowFilter, bool) {
+	var filter model.WorkflowFilter
+	for name, target := range map[string]*string{
+		"type": &filter.Type, "status": &filter.Status,
+		"fromDate": &filter.FromDate, "toDate": &filter.ToDate,
+	} {
+		if values, ok := c.GetQueryArray(name); ok {
+			if len(values) != 1 {
+				fail(c, service.ErrInvalid)
+				return filter, false
+			}
+			*target = values[0]
+		}
+	}
+	return filter, true
 }

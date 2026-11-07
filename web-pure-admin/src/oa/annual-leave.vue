@@ -9,7 +9,7 @@ import PageNav from "./page-nav.vue";
 import RemoteState from "./remote-state.vue";
 
 const props = defineProps<{ employeeId: number; unavailable?: boolean }>();
-const emit = defineEmits<{ editing: [boolean] }>();
+const emit = defineEmits<{ editing: [boolean]; changed: [] }>();
 const session = useSession();
 const canManage = computed(() => session.account?.permissions.canManageAnnualLeave === true);
 const page = shallowRef(1);
@@ -75,6 +75,7 @@ async function save() {
     });
     close();
     feedback.value = "年假记录已保存。";
+    emit("changed");
     if (page.value === 1) await load();
     else page.value = 1;
   } catch (cause) {

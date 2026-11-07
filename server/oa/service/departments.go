@@ -41,10 +41,14 @@ func (s *Service) WriteDepartment(ctx context.Context, actor model.Actor, id uin
 		return model.DepartmentView{}, ErrInvalid
 	}
 
+	reason, err := auditReason(input.Reason, "维护部门")
+	if err != nil {
+		return model.DepartmentView{}, err
+	}
 	var row model.Department
 	// The repeatable-read locking scan serializes topology changes, including
 	// concurrent changes on different nodes that together would form a cycle.
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var departments []model.Department
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Order("id ASC").Find(&departments).Error; err != nil {
 			return err
@@ -68,18 +72,24 @@ func (s *Service) WriteDepartment(ctx context.Context, actor model.Actor, id uin
 		}
 		if id == 0 {
 			row = model.Department{Name: name, ParentID: input.ParentID, Version: 1}
-			return createError(tx.Create(&row).Error)
+			if err := createError(tx.Create(&row).Error); err != nil {
+				return err
+			}
+			return writeDepartmentAudit(tx, actor, "CREATE", reason, nil, row)
 		}
+		before := row
 		renamed := row.Name != name
 		row.Name, row.ParentID, row.Version = name, input.ParentID, row.Version+1
 		if err := tx.Model(&row).Updates(map[string]any{"name": name, "parent_id": row.ParentID, "version": row.Version}).Error; err != nil {
 			return createError(err)
 		}
 		if renamed {
-			return tx.Model(&model.Employee{}).Where("department_id = ?", id).
-				Updates(map[string]any{"department": name, "version": gorm.Expr("version + 1")}).Error
+			if err := tx.Model(&model.Employee{}).Where("department_id = ?", id).
+				Updates(map[string]any{"department": name, "version": gorm.Expr("version + 1")}).Error; err != nil {
+				return err
+			}
 		}
-		return nil
+		return writeDepartmentAudit(tx, actor, "UPDATE", reason, &before, row)
 	}, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
 	return departmentView(row), recordWriteError(err)
 }
@@ -106,7 +116,7 @@ func departmentView(row model.Department) model.DepartmentView {
 
 // resolveEmployeeDepartment keeps the legacy free-text create path and takes
 // a shared lock so a concurrent rename cannot commit a stale employee label.
-func resolveEmployeeDepartment(tx *gorm.DB, employee *model.Employee) error {
+func resolveEmployeeDepartment(tx *gorm.DB, actor model.Actor, reason string, employee *model.Employee) error {
 	shared := clause.Locking{Strength: "SHARE"}
 	var row model.Department
 	if employee.DepartmentID != nil {
@@ -129,6 +139,9 @@ func resolveEmployeeDepartment(tx *gorm.DB, employee *model.Employee) error {
 			if err == nil {
 				err = tx.Clauses(shared).Take(&row, "name = ?", employee.Department).Error
 			}
+			if err == nil && candidate.ID == row.ID {
+				err = writeDepartmentAudit(tx, actor, "CREATE", reason, nil, row)
+			}
 		}
 		if err != nil {
 			return err
@@ -136,4 +149,27 @@ func resolveEmployeeDepartment(tx *gorm.DB, employee *model.Employee) error {
 	}
 	employee.DepartmentID = &row.ID
 	return nil
+}
+
+func (s *Service) DepartmentTree(ctx context.Context, actor model.Actor) (model.DepartmentTree, error) {
+	result := model.DepartmentTree{List: []model.DepartmentNode{}}
+	if actor.AuthorityID != model.HRAdmin && actor.AuthorityID != model.HRViewer {
+		return result, ErrForbidden
+	}
+	counts := s.visibleEmployees(ctx, actor).Select("department_id, COUNT(*) AS employee_count").
+		Where("department_id IS NOT NULL").Group("department_id")
+	var rows []struct {
+		model.Department
+		EmployeeCount int64
+	}
+	err := s.db.WithContext(ctx).Table("oa_departments AS d").
+		Select("d.*, COALESCE(c.employee_count, 0) AS employee_count").
+		Joins("LEFT JOIN (?) AS c ON c.department_id = d.id", counts).
+		Order("d.id ASC").Scan(&rows).Error
+	for _, row := range rows {
+		result.List = append(result.List, model.DepartmentNode{
+			DepartmentView: departmentView(row.Department), EmployeeCount: row.EmployeeCount,
+		})
+	}
+	return result, err
 }

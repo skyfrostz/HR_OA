@@ -1,5 +1,5 @@
 <script setup>
-import { ElAlert, ElButton } from 'element-plus'
+import { ElAlert, ElButton, ElSkeleton, ElSkeletonItem } from 'element-plus'
 
 defineProps({
   loading: Boolean,
@@ -11,7 +11,11 @@ const emit = defineEmits(['retry'])
 </script>
 
 <template>
-  <p v-if="loading" role="status" class="oa-status">正在加载…</p>
+  <div v-if="loading" role="status" class="oa-status oa-skeleton" aria-label="正在加载">
+    <ElSkeleton :animated="false">
+      <template #template><ElSkeletonItem variant="text" style="width: 45%" /><ElSkeletonItem variant="text" style="width: 72%" /></template>
+    </ElSkeleton>
+  </div>
   <div v-else-if="error" class="oa-error">
     <ElAlert :title="error" type="error" :closable="false" show-icon />
     <ElButton @click="emit('retry')">重新加载</ElButton>

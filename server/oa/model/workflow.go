@@ -15,6 +15,7 @@ const (
 	ActionApprove  = "APPROVE"
 	ActionReject   = "REJECT"
 	ActionTransfer = "TRANSFER"
+	ActionHandoff  = "HANDOFF"
 
 	TaskAssigned    = "TASK_ASSIGNED"
 	RequestApproved = "REQUEST_APPROVED"
@@ -57,16 +58,17 @@ type ApprovalTask struct {
 func (ApprovalTask) TableName() string { return "oa_tasks" }
 
 type ApprovalAction struct {
-	ID           uint `gorm:"primaryKey"`
-	RequestID    uint `gorm:"not null;index"`
-	TaskID       *uint
-	ActorID      uint   `gorm:"not null;index"`
-	ActorName    string `gorm:"size:255;not null"`
-	Action       string `gorm:"size:16;not null"`
-	Comment      string `gorm:"type:text;not null"`
-	TargetUserID *uint
-	TargetName   *string `gorm:"size:255"`
-	CreatedAt    time.Time
+	PreviousAssigneeID *uint
+	ID                 uint `gorm:"primaryKey"`
+	RequestID          uint `gorm:"not null;index"`
+	TaskID             *uint
+	ActorID            uint   `gorm:"not null;index"`
+	ActorName          string `gorm:"size:255;not null"`
+	Action             string `gorm:"size:16;not null"`
+	Comment            string `gorm:"type:text;not null"`
+	TargetUserID       *uint
+	TargetName         *string `gorm:"size:255"`
+	CreatedAt          time.Time
 }
 
 func (ApprovalAction) TableName() string { return "oa_request_actions" }

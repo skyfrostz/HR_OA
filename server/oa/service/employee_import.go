@@ -141,6 +141,9 @@ func (s *Service) ConfirmEmployeeImport(ctx context.Context, actor model.Actor, 
 		result = model.ImportResult{PreviewID: id, ImportedCount: len(employees), EmployeeIDs: make([]uint, 0, len(employees))}
 		for _, employee := range employees {
 			result.EmployeeIDs = append(result.EmployeeIDs, employee.ID)
+			if err := writeEmployeeAudit(tx, actor, "IMPORT", "确认员工导入", nil, employee); err != nil {
+				return err
+			}
 		}
 		payload, err := json.Marshal(result)
 		if err != nil {

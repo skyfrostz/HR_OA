@@ -4,6 +4,7 @@
 @source "../layout";
 @source "../components/ReText";
 @source "../components/ReSegmented";
+@source "../components/RePureTableBar";
 @source "../views/login/index.vue";
 @source "../views/error";
 @source "../oa";
