@@ -28,7 +28,7 @@ func (s *Service) ListContracts(ctx context.Context, actor model.Actor, employee
 	}
 	var contracts []model.Contract
 	err := query.Order("id DESC").Limit(p.PageSize).Offset(p.Offset()).
-		Preload("Files", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).Find(&contracts).Error
+		Preload("Files", func(db *gorm.DB) *gorm.DB { return scopedFiles(db, actor) }).Find(&contracts).Error
 	for _, contract := range contracts {
 		page.List = append(page.List, contractView(contract))
 	}
@@ -84,7 +84,7 @@ func (s *Service) CreateContract(ctx context.Context, actor model.Actor, employe
 func (s *Service) Contract(ctx context.Context, actor model.Actor, id uint) (model.ContractView, error) {
 	var contract model.Contract
 	err := s.visibleContracts(ctx, actor).Preload("Files", func(db *gorm.DB) *gorm.DB {
-		return db.Order("id ASC")
+		return scopedFiles(db, actor)
 	}).Take(&contract, id).Error
 	return contractView(contract), queryError(err)
 }
@@ -162,7 +162,7 @@ func (s *Service) changeContract(ctx context.Context, actor model.Actor, id uint
 		if err := createError(tx.Model(&model.Contract{}).Where("id = ?", id).Updates(fields).Error); err != nil {
 			return err
 		}
-		if err := tx.Preload("Files", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).Take(&contract, id).Error; err != nil {
+		if err := tx.Preload("Files", func(db *gorm.DB) *gorm.DB { return scopedFiles(db, actor) }).Take(&contract, id).Error; err != nil {
 			return err
 		}
 		return writeContractAudit(tx, actor, action, reason, &before, contract)
@@ -221,6 +221,7 @@ func contractView(contract model.Contract) model.ContractView {
 func fileView(file model.ContractFile) model.FileView {
 	return model.FileView{
 		ID: file.ID, OriginalName: file.OriginalName, Size: file.Size, ContentType: file.ContentType,
+		Classification: file.Classification, Version: file.Version,
 		CreatedAt: file.CreatedAt.UTC(),
 	}
 }

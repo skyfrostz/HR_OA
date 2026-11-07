@@ -1,0 +1,51 @@
+# Opt-in template. The managed MySQL service and HTTPS ingress are provisioned separately.
+name: hr-oa-production
+services:
+  api:
+    image: ${OA_API_IMAGE:?Set an immutable API image reference}
+    restart: unless-stopped
+    env_file:
+      - ${OA_PRODUCTION_ENV_FILE:?Set the absolute path to the private production env file}
+    environment:
+      OA_ENV: production
+      OA_ADDR: 0.0.0.0:8888
+      OA_DEV_SEED: "false"
+      OA_MOCK_NOTIFY_FAIL: "false"
+      OA_STORAGE_DIR: /var/lib/oa/private
+      OA_TRUSTED_PROXIES: ${OA_PROXY_IP:-172.30.65.2}/32
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,mode=1777
+    volumes:
+      - private-files:/var/lib/oa
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8888/api/oa/v1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+    networks:
+      app: {}
+  web:
+    image: ${OA_WEB_IMAGE:?Set an immutable Web image reference}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${OA_WEB_PORT:-18080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/oa.html && wget -q -O /dev/null http://127.0.0.1:8080/h5.html && wget -q -O /dev/null http://127.0.0.1:8080/api/oa/v1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    networks:
+      app:
+        ipv4_address: ${OA_PROXY_IP:-172.30.65.2}
+networks:
+  app:
+    ipam:
+      config:
+        - subnet: ${OA_APP_SUBNET:-172.30.65.0/29}
+volumes:
+  private-files:

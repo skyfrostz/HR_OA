@@ -33,14 +33,16 @@ const (
 )
 
 type EmployeeImport struct {
-	ID        string          `gorm:"type:char(32);primaryKey"`
-	CreatorID uint            `gorm:"not null;index"`
-	Status    string          `gorm:"size:16;not null"`
-	CreatedAt time.Time       `gorm:"not null"`
-	ExpiresAt time.Time       `gorm:"not null"`
-	Preview   json.RawMessage `gorm:"type:json;not null"`
-	Validated json.RawMessage `gorm:"type:json"`
-	Result    json.RawMessage `gorm:"type:json"`
+	ConfirmedAt *time.Time
+	PurgedAt    *time.Time      `gorm:"index:ix_oa_import_cleanup,priority:1"`
+	ID          string          `gorm:"type:char(32);primaryKey"`
+	CreatorID   uint            `gorm:"not null;index"`
+	Status      string          `gorm:"size:16;not null"`
+	CreatedAt   time.Time       `gorm:"not null"`
+	ExpiresAt   time.Time       `gorm:"not null;index:ix_oa_import_cleanup,priority:2"`
+	Preview     json.RawMessage `gorm:"type:json;not null"`
+	Validated   json.RawMessage `gorm:"type:json"`
+	Result      json.RawMessage `gorm:"type:json"`
 }
 
 func (EmployeeImport) TableName() string { return "oa_employee_imports" }

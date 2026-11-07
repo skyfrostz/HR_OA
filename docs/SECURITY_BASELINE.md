@@ -18,9 +18,19 @@ Upstream `server/initialize/router.go` unconditionally mounts Local.StorePath vi
 
 - GVA sys_users/sys_authorities identity and roles, x-token JWT only; verify role/enabled state from database on each protected call, plus Casbin method/path authorization.
 - Employee row scope is enforced at list, detail, contract and file service access; salary is omitted from unauthorized output rather than hidden only in the UI.
-- Auth token stays in browser memory. No cookie-auth fallback, no token URLs. Return no-store headers on sensitive data.
+- Auth token stays in browser memory. No general cookie-auth fallback or OA-token URLs. M6 uses short-lived HttpOnly cookies only for OAuth state and one-time exchange; application APIs still require the x-token header. Return no-store headers on sensitive data.
 - Private attachments have random stored names, bounded PDF/JPEG/PNG content checks, and authenticated download with attachment/nosniff/no-store. No storage path in response.
 - Main has explicit HTTP timeouts and graceful shutdown; default listens only on loopback. Development seed is opt-in and requires environment secrets.
+
+## M6 additions
+
+- WeCom member mapping is explicit and mode/corporation scoped; disabled or offboarded employees and unmapped external identities cannot establish sessions. Binding changes revoke prior sessions. Broadcast and multi-member selectors are rejected both at binding and immediately before sending.
+- Enterprise notifications contain fixed generic text and an event number. Unknown external results remain UNCERTAIN; API acceptance is not proof of delivery or read status. No real customer messages were used in development acceptance.
+- Attachments have STANDARD/RESTRICTED classification. Restricted metadata, downloads and previews share authorization. Old attachments remain STANDARD for compatibility and require manual classification if their contents are sensitive.
+- PDF preview renders canvas pages from authenticated bytes with script/XFA/eval and annotation links disabled; bundled CMaps and fonts avoid external CDNs. Image dimensions and PDF page geometry are bounded. This is not a general document malware scanner.
+- OSS uses the official Go V2 SDK with private-bucket/public-block/versioning preflight. Every object read is behind OA authorization. Migration verifies bytes before changing version-checked records and retains originals; no public or presigned browser URL is returned.
+- Production startup rejects development seeds, mock providers, weak configuration and non-TLS database connections. The initial administrator is opt-in for an empty identity store; existing accounts are not overwritten. Proxy trust defaults to none and disallows wildcard networks.
+- Startup diagnostics expose fixed stage labels only. CLI configuration validation does not connect to DB/providers. Maintenance migration disables background workers and emits JSON without Gin debug output.
 
 ## Evidence status
 

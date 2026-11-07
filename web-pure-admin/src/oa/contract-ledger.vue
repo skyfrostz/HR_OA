@@ -6,6 +6,7 @@ import { findAcrossPages } from './business'
 import { contractStatuses } from './format'
 import { useSession } from './session'
 import { useRemote } from './use-remote'
+import AttachmentClassification from './attachment-classification.vue'
 import AttachmentForm from './attachment-form.vue'
 import ContractFiles from './contract-files.vue'
 import ContractForm from './contract-form.vue'
@@ -41,10 +42,10 @@ watch(selected, async id => {
   focusedHeading.value?.scrollIntoView?.({ block: 'nearest' })
 }, { immediate: true })
 
-function startEdit(kind, contract = null) {
+function startEdit(kind, contract = null, file = null) {
   if (edit.value || props.unavailable || !session.canWrite) return
   feedback.value = ''
-  edit.value = { kind, contract }
+  edit.value = { kind, contract, file }
   emit('editing', true)
 }
 function stopEdit() {
@@ -97,7 +98,7 @@ function reconciled() {
       <div><h2 id="contracts-heading">劳动合同</h2><p class="oa-muted">查看合同期限、续约关系和私有附件。</p></div>
       <ElButton v-if="session.canWrite" type="primary" :disabled="Boolean(edit) || unavailable" @click="startEdit('create')">新建合同</ElButton>
     </div>
-    <ContractForm v-if="edit && edit.kind !== 'attachment'" :path="path" :kind="edit.kind" :contract="edit.contract" :refresh="refreshRecords"
+    <ContractForm v-if="edit && !['attachment', 'classification'].includes(edit.kind)" :path="path" :kind="edit.kind" :contract="edit.contract" :refresh="refreshRecords"
       @cancel="stopEdit" @saved="saved" @reconciled="reconciled" />
     <p v-if="feedback" class="oa-status" role="status">{{ feedback }}</p>
 
@@ -121,7 +122,7 @@ function reconciled() {
           <div><dt>终止日期</dt><dd>{{ detailRow.terminatedDate || '未登记' }}</dd></div>
           <div v-if="detailRow.previousContractId"><dt>续约来源</dt><dd><ElButton text type="primary" :disabled="Boolean(edit) || unavailable" @click="selected = detailRow.previousContractId">查看原合同</ElButton></dd></div>
         </dl>
-        <ContractFiles :files="detailRow.files || []" />
+        <ContractFiles :files="detailRow.files || []" :unavailable="Boolean(edit) || unavailable" @classify="startEdit('classification', detailRow, $event)" />
         <div v-if="session.canWrite" class="oa-actions">
           <ElButton v-if="detailRow.status === 'DRAFT'" :disabled="Boolean(edit) || unavailable" @click="startEdit('edit', detailRow)">编辑草稿</ElButton>
           <ElButton v-if="detailRow.status === 'DRAFT'" :disabled="Boolean(edit) || unavailable" @click="startEdit('sign', detailRow)">登记签署</ElButton>
@@ -133,6 +134,7 @@ function reconciled() {
       </template>
     </section>
 
+    <AttachmentClassification v-if="edit?.kind === 'classification'" :file="edit.file" :refresh="refreshRecords" @cancel="stopEdit" @saved="saved(null, '附件访问范围已更新。')" @reconciled="reconciled" />
     <AttachmentForm v-if="edit?.kind === 'attachment'" :contract-id="edit.contract.id" :refresh="refreshRecords" @cancel="stopEdit" @uploaded="saved(null, '附件已上传。')" />
 
     <RemoteState :loading="loading" :error="error" :empty="Boolean(result && !result.list?.length)" empty-text="暂无劳动合同。" @retry="load" />
@@ -143,7 +145,7 @@ function reconciled() {
           <ElTag :type="contractStatuses[contract.status]?.type" effect="plain">{{ contractStatuses[contract.status]?.label || '未知状态' }}</ElTag>
         </div>
         <p v-if="contract.previousContractId" class="oa-muted">续约来源：{{ result.list.find(item => item.id === contract.previousContractId)?.contractNo || '记录 #' + contract.previousContractId }}</p>
-        <ContractFiles :files="contract.files || []" />
+        <ContractFiles :files="contract.files || []" :unavailable="Boolean(edit) || unavailable" @classify="startEdit('classification', contract, $event)" />
         <div class="oa-actions">
           <ElButton text type="primary" :disabled="loading || Boolean(edit) || unavailable" @click="selected = contract.id">查看合同详情</ElButton>
           <template v-if="session.canWrite">

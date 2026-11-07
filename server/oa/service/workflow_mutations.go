@@ -306,7 +306,8 @@ func recordAction(tx *gorm.DB, action model.ApprovalAction, recipient uint, kind
 		return nil
 	}
 	return tx.Create(&model.NotificationEvent{
-		ActionID: action.ID, RequestID: action.RequestID, RecipientID: recipient,
+		ActionID: &action.ID, RequestID: action.RequestID, RecipientID: recipient,
+		DeliveryMode: outboxMode(tx), DeliveryStatus: "PENDING",
 		Kind: kind, AvailableAt: now, CreatedAt: now,
 	}).Error
 }

@@ -1,0 +1,40 @@
+# Disposable MySQL acceptance for CI. This file does not use the developer project.
+services:
+  mysql:
+    image: mysql:8.4.8
+    environment:
+      MYSQL_DATABASE: hr_oa_ci
+      MYSQL_USER: hr_oa_ci
+      MYSQL_PASSWORD: ${OA_CI_DB_PASSWORD:?Use scripts/oa-ci-integration.sh}
+      MYSQL_ROOT_PASSWORD: ${OA_CI_DB_ROOT_PASSWORD:?Use scripts/oa-ci-integration.sh}
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysql --protocol=TCP -h 127.0.0.1 -u $$MYSQL_USER -D $$MYSQL_DATABASE -e 'SELECT 1' >/dev/null 2>&1"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
+  api:
+    build:
+      context: ../..
+      target: api
+      args:
+        OA_BUILD_VERSION: ${OA_BUILD_VERSION:-development}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      OA_ADDR: 0.0.0.0:8888
+      OA_MYSQL_DSN: "hr_oa_ci:${OA_CI_DB_PASSWORD:?Use scripts/oa-ci-integration.sh}@tcp(mysql:3306)/hr_oa_ci?charset=utf8mb4&parseTime=true&loc=UTC"
+      OA_STORAGE_DIR: /var/lib/oa/private
+      OA_JWT_SECRET: ${OA_CI_JWT_SECRET:?Use scripts/oa-ci-integration.sh}
+      OA_DEV_SEED: "true"
+      OA_SEED_PASSWORD: ${OA_CI_SEED_PASSWORD:?Use scripts/oa-ci-integration.sh}
+    ports:
+      - "127.0.0.1:${OA_CI_API_PORT:-}:8888"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8888/api/oa/v1/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 20

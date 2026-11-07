@@ -8,6 +8,7 @@ import { useRemote } from './use-remote'
 import ContractLedger from './contract-ledger.vue'
 import RemoteState from './remote-state.vue'
 import EmployeeForm from './employee-form.vue'
+import WeComBinding from './wecom-binding.vue'
 import EmployeeAccount from './employee-account.vue'
 import AuditHistory from './audit-history.vue'
 import AnnualLeave from './annual-leave.vue'
@@ -26,7 +27,7 @@ const employment = shallowRef('')
 const group = shallowRef('contracts')
 const groups = computed(() => [
   { key: 'contracts', title: '劳动合同' },
-  ...(session.account?.user.role === 'HR_ADMIN' ? [{ key: 'account', title: '员工账号' }] : []),
+  ...(session.account?.user.role === 'HR_ADMIN' ? [{ key: 'account', title: '员工账号' }, { key: 'wecom', title: '企业微信' }] : []),
   { key: 'leave', title: '年假记录' },
   { key: 'audit', title: '变更历史' }
 ])
@@ -132,6 +133,7 @@ async function employeeUpdated() {
     <EmployeeAccount v-if="employee && group === 'account' && session.account?.user.role === 'HR_ADMIN'" :employee-id="employee.id"
       :unavailable="Boolean(editArea && editArea !== 'account')" @editing="setEditing('account', $event)"
       @employment="employment = $event" @changed="accountChanged" />
+    <WeComBinding v-if="employee && group === 'wecom' && session.account?.user.role === 'HR_ADMIN'" :key="employee.id" :employee-id="employee.id" :unavailable="Boolean(editArea && editArea !== 'wecom')" @editing="setEditing('wecom', $event)" @changed="accountChanged" />
     <AnnualLeave
       v-if="employee && group === 'leave'"
       :key="'annual-' + employee.id"

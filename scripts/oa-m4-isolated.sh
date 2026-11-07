@@ -8,7 +8,8 @@ milestone="${OA_QA_MILESTONE:-4}"
 case "$milestone" in
     4) prior_state=() ;;
     5) prior_state=(--m4-state tests/results/m4/api-state.json) ;;
-    *) printf '%s\n' 'OA_QA_MILESTONE must be 4 or 5' >&2; exit 2 ;;
+    6) prior_state=(--m4-state tests/results/m4/api-state.json --m5-state tests/results/m5/browser-state.json) ;;
+    *) printf '%s\n' 'OA_QA_MILESTONE must be 4, 5, or 6' >&2; exit 2 ;;
 esac
 baseline="$PWD/.local/m${milestone}-baseline"
 archive="$(< "$baseline/BACKUP_PATH")"

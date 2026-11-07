@@ -82,7 +82,11 @@ func (s *Service) EmployeeImportPreview(ctx context.Context, actor model.Actor, 
 	if err != nil {
 		return model.ImportPreview{}, queryError(err)
 	}
-	return importPreview(record, time.Now())
+	preview, err := importPreview(record, workflowNow())
+	if record.Status == model.ImportCommitted || preview.Status == model.ImportExpired {
+		preview.Rows = []model.ImportRow{}
+	}
+	return preview, err
 }
 
 func (s *Service) ConfirmEmployeeImport(ctx context.Context, actor model.Actor, id string) (model.ImportResult, error) {
@@ -149,8 +153,14 @@ func (s *Service) ConfirmEmployeeImport(ctx context.Context, actor model.Actor, 
 		if err != nil {
 			return err
 		}
+		preview.Status, preview.CanConfirm, preview.Rows = model.ImportCommitted, false, []model.ImportRow{}
+		cleaned, err := json.Marshal(preview)
+		if err != nil {
+			return err
+		}
 		return tx.Model(&record).Updates(map[string]any{
-			"status": model.ImportCommitted, "result": payload, "validated": nil,
+			"status": model.ImportCommitted, "result": payload, "validated": nil, "preview": cleaned,
+			"confirmed_at": now, "purged_at": now,
 		}).Error
 	}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if errors.Is(recordWriteError(err), ErrStaleRecord) {
@@ -166,7 +176,10 @@ func importPreview(record model.EmployeeImport, now time.Time) (model.ImportPrev
 	}
 	preview.Status = record.Status
 	preview.CreatedAt, preview.ExpiresAt = record.CreatedAt.UTC(), record.ExpiresAt.UTC()
-	preview.CanConfirm = preview.CanConfirm && record.Status == model.ImportPending && now.Before(record.ExpiresAt)
+	if record.Status == model.ImportPending && !now.Before(record.ExpiresAt) {
+		preview.Status = model.ImportExpired
+	}
+	preview.CanConfirm = preview.CanConfirm && preview.Status == model.ImportPending
 	return preview, nil
 }
 

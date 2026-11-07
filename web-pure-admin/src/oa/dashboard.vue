@@ -2,6 +2,7 @@
 import { computed, onMounted, useTemplateRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElButton, ElStatistic } from 'element-plus'
+import { ArrowRight, Calendar, Checked, Document, Warning, OfficeBuilding, Setting } from '@element-plus/icons-vue'
 import { useSession } from './session'
 import { useRemote } from './use-remote'
 import { employeeNavigation } from './navigation'
@@ -10,6 +11,7 @@ const session = useSession()
 const heading = useTemplateRef('heading')
 onMounted(() => heading.value?.focus())
 const router = useRouter()
+const icons = { pendingTasks: Checked, myRequests: Document, contractReminders: Calendar, workflowExceptions: Warning, approvedLeaves: Checked }
 const { result, loading, error, load } = useRemote(signal => session.authorized('/dashboard?days=30', { signal }))
 const sections = computed(() => {
   if (!result.value) return []
@@ -37,23 +39,34 @@ void load()
     <RemoteState :loading="loading" :error="error" @retry="load" />
     <div v-if="!loading && result" class="oa-dashboard-grid">
       <section v-for="item in sections" :key="item.key" class="oa-surface oa-dashboard-section">
+        <span class="oa-dashboard-icon" aria-hidden="true"><component :is="icons[item.key]" /></span>
         <ElStatistic :title="item.label" :value="item.value" />
         <p class="oa-muted">{{ item.note }}</p>
-        <ElButton @click="open(item)">查看{{ item.label }}</ElButton>
+        <ElButton text class="oa-dashboard-open" @click="open(item)">查看{{ item.label }}<ArrowRight aria-hidden="true" /></ElButton>
       </section>
     </div>
     <section class="oa-surface oa-dashboard-shortcuts" aria-labelledby="dashboard-shortcuts"><h2 id="dashboard-shortcuts">常用入口</h2><div class="oa-actions">
-      <ElButton @click="router.push('/employees')">员工档案</ElButton>
-      <ElButton v-if="session.account?.user.employeeId" @click="router.push('/my-leave')">我的假期与流水</ElButton>
-      <ElButton v-if="session.account?.user.role === 'HR_ADMIN'" @click="router.push('/workflow-settings')">请假与审批配置</ElButton>
+      <ElButton :icon="OfficeBuilding" @click="router.push('/employees')">员工档案</ElButton>
+      <ElButton v-if="session.account?.user.employeeId" :icon="Calendar" @click="router.push('/my-leave')">我的假期与流水</ElButton>
+      <ElButton v-if="session.account?.user.role === 'HR_ADMIN'" :icon="Setting" @click="router.push('/workflow-settings')">请假与审批配置</ElButton>
     </div></section>
   </section>
 </template>
 <style scoped>
 .oa-dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1rem; }
-.oa-dashboard-section { display: grid; align-content: start; justify-items: start; gap: .75rem; }
-.oa-dashboard-section :deep(.el-statistic__head) { color: var(--el-text-color-regular); font-size: 1rem; }
-.oa-dashboard-section :deep(.el-statistic__content) { font-size: 2rem; font-variant-numeric: tabular-nums; font-weight: 650; }
-.oa-dashboard-shortcuts { margin-top: 1rem; }
-.oa-dashboard-shortcuts .oa-actions { margin-top: .8rem; }
+.oa-dashboard-section { position: relative; display: grid; grid-template-rows: auto 1fr auto; gap: .5rem; padding: 1.5rem 1.5rem .75rem; border-top: 3px solid var(--oa-tint); }
+.oa-dashboard-icon { position: absolute; top: 1.5rem; right: 1.5rem; display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: .625rem; background: var(--oa-tint); color: var(--oa-accent-ink); }
+.oa-dashboard-icon svg { width: 1.25rem; height: 1.25rem; }
+.oa-dashboard-section :deep(.el-statistic__head) { padding-inline-end: 3rem; color: var(--el-text-color-regular); font-size: .9375rem; margin-bottom: .75rem; }
+.oa-dashboard-section :deep(.el-statistic__content) { color: var(--el-text-color-primary); font-size: 2.75rem; line-height: 1.15; font-variant-numeric: tabular-nums; letter-spacing: -.035em; font-weight: 650; }
+.oa-dashboard-section > .oa-muted { margin: .375rem 0 1rem; font-size: .875rem; }
+.oa-dashboard-section .oa-dashboard-open { width: 100%; margin: 0; padding: .875rem 0; border-top: 1px solid var(--oa-line); border-radius: 0; color: var(--oa-accent-text); }
+.oa-dashboard-open :deep(span) { display: flex; justify-content: space-between; width: 100%; }
+.oa-dashboard-open svg { width: 1rem; height: 1rem; }
+.oa-dashboard-shortcuts { margin-top: 1.25rem; }
+.oa-dashboard-shortcuts .oa-actions { margin-top: 1rem; gap: .75rem; }
+@media (max-width: 38rem) {
+  .oa-dashboard-section { padding: 1.25rem 1.25rem .5rem; }
+  .oa-dashboard-icon { top: 1.25rem; right: 1.25rem; }
+}
 </style>

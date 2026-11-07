@@ -1,23 +1,22 @@
 <script setup lang="ts">
 import { computed, shallowRef, useTemplateRef } from "vue";
-import { useRouteWriteLock } from "./use-route-write-lock";
+import { useMediaQuery } from "@vueuse/core";
 import { ElAlert, ElButton, ElTag } from "element-plus";
-import { saveAttachment } from "./api";
-import type { ImportPreview, ImportResult } from "./business";
-import { useSession } from "./session";
-
-const session = useSession();
+import { useRouteWriteLock } from "./use-route-write-lock";
+import { useEmployeeImport } from "./use-employee-import";
+import ImportHistory from "./import-history.vue";
+const narrow = useMediaQuery("(max-width: 38rem)");
 const input = useTemplateRef("input");
-const selectedFile = shallowRef<File | null>(null);
-const preview = shallowRef<ImportPreview | null>(null);
-const result = shallowRef<ImportResult | null>(null);
-const pending = shallowRef<"template" | "preview" | "confirm" | "status" | "">("");
-const uncertain = shallowRef(false);
-const invalidated = shallowRef(false);
-const error = shallowRef("");
-const allowed = computed(() => session.account?.permissions.canImportEmployees === true);
-const locked = computed(() => Boolean(pending.value) || uncertain.value);
-const canConfirm = computed(() => Boolean(preview.value?.canConfirm && !invalidated.value && !result.value));
+const errorsOnly = shallowRef(false);
+const { selectedFile, preview, result, pending, uncertain, invalidated, error, revision, locked, canConfirm, pick: selectFile, clear, inspect: readPreview, confirm, checkStatus, open: readHistory, downloadTemplate, downloadErrors } = useEmployeeImport();
+const rows = computed(() => (preview.value?.rows || []).filter(row => !errorsOnly.value || row.errors.length));
+const expiry = computed(() => preview.value?.expiresAt ? new Date(preview.value.expiresAt).toLocaleString("zh-CN", { hour12: false }) : "—");
+useRouteWriteLock(locked);
+function pick(event: Event) { selectFile((event.target as HTMLInputElement).files?.[0]); if (!selectedFile.value) (event.target as HTMLInputElement).value = ""; errorsOnly.value = false; }
+async function inspect() { await readPreview(); if (input.value) input.value.value = ""; }
+function reset() { clear(); if (input.value) input.value.value = ""; }
+async function open(id: string) { errorsOnly.value = false; if (input.value) input.value.value = ""; await readHistory(id); }
+const fieldLabels = { employeeNo: "工号", name: "姓名", department: "部门", birthDate: "出生日期", hireDate: "入职日期", salary: "约定工资" };
 const columns: TableColumnList = [
   { label: "行", prop: "row", width: 58 },
   { label: "工号", slot: "employeeNo", minWidth: 95 },
@@ -28,101 +27,6 @@ const columns: TableColumnList = [
   { label: "约定工资（元）", slot: "salary", minWidth: 130 },
   { label: "校验结果", slot: "validation", minWidth: 220 }
 ];
-
-useRouteWriteLock(locked);
-
-function pick(event: Event) {
-  const element = event.target as HTMLInputElement;
-  const file = element.files?.[0];
-  selectedFile.value = null;
-  error.value = "";
-  if (!file) return;
-  if (!/\.xlsx$/i.test(file.name) || !file.size || file.size > 2 * 1024 * 1024) {
-    error.value = "请选择不超过 2 MiB 的非空 .xlsx 文件。";
-    element.value = "";
-    return;
-  }
-  selectedFile.value = file;
-  preview.value = null;
-  result.value = null;
-  invalidated.value = false;
-}
-
-async function downloadTemplate() {
-  if (locked.value || !allowed.value) return;
-  pending.value = "template";
-  error.value = "";
-  try {
-    saveAttachment(await session.authorized<Blob>("/employees/import-template.xlsx", { binary: true }), "员工导入模板.xlsx");
-  } catch (cause) {
-    error.value = cause.message;
-  } finally {
-    pending.value = "";
-  }
-}
-
-async function inspect() {
-  if (locked.value || !allowed.value || !selectedFile.value) return;
-  pending.value = "preview";
-  error.value = "";
-  invalidated.value = false;
-  try {
-    preview.value = await session.authorized<ImportPreview>("/employee-imports/preview", {
-      method: "POST", file: selectedFile.value
-    });
-    selectedFile.value = null;
-    if (input.value) input.value.value = "";
-  } catch (cause) {
-    error.value = cause.status === 413 ? "Excel 文件超过 2 MiB。" : cause.message;
-  } finally {
-    pending.value = "";
-  }
-}
-
-const previewPath = () => "/employee-imports/" + encodeURIComponent(preview.value.id);
-
-async function checkStatus() {
-  if (pending.value || !preview.value) return;
-  pending.value = "status";
-  try {
-    preview.value = await session.authorized<ImportPreview>(previewPath());
-    error.value = preview.value.status === "COMMITTED"
-      ? "预览已提交。重试同一预览可读取原导入结果。"
-      : "预览尚未标记完成。请重试同一预览以确认结果。";
-  } catch (cause) {
-    if (cause.status === 410) {
-      uncertain.value = false;
-      invalidated.value = true;
-    }
-    error.value = cause.status === 410 ? "预览已过期，请重新选择文件。" : cause.message;
-  } finally {
-    pending.value = "";
-  }
-}
-
-async function confirm() {
-  if (pending.value || !preview.value || !allowed.value || (!uncertain.value && !canConfirm.value)) return;
-  pending.value = "confirm";
-  error.value = "";
-  try {
-    result.value = await session.authorized<ImportResult>(previewPath() + "/confirm", { method: "POST", data: {} });
-    uncertain.value = false;
-  } catch (cause) {
-    uncertain.value = !cause.status || cause.status >= 500 || cause.status === 429;
-    if (uncertain.value) {
-      error.value = "暂时无法确认导入结果。请重试同一预览。";
-    } else {
-      invalidated.value = true;
-      error.value = cause.status === 410
-        ? "预览已过期，请重新选择文件。"
-        : cause.status === 409
-          ? "预览已失效或记录有变动，请重新预览。"
-          : cause.message;
-    }
-  } finally {
-    pending.value = "";
-  }
-}
 </script>
 
 <template>
@@ -136,13 +40,15 @@ async function confirm() {
       <p class="oa-muted">仅支持 .xlsx，最大 2 MiB，最多 1000 行。部门须已存在。</p>
       <form class="oa-form" autocomplete="off" @submit.prevent="inspect">
         <label for="oa-import-file">Excel 文件</label>
-        <input id="oa-import-file" ref="input" type="file" accept=".xlsx" :disabled="locked" @change="pick">
+        <input id="oa-import-file" ref="input" class="oa-file-input" type="file" tabindex="-1" accept=".xlsx" :disabled="locked" @change="pick">
+        <div class="oa-file-picker"><ElButton :disabled="locked" @click="input?.click()">选择 Excel 文件</ElButton><span class="oa-muted">{{ selectedFile?.name || (preview ? '可选择其他文件重新预览' : '尚未选择文件') }}</span></div>
         <div class="oa-actions">
           <ElButton type="primary" native-type="submit" :loading="pending === 'preview'" :disabled="locked || !selectedFile">预览导入</ElButton>
+          <ElButton v-if="selectedFile || preview || result" :disabled="locked" @click="reset">清除当前预览</ElButton>
         </div>
       </form>
       <ElAlert v-if="error" class="oa-inline-alert" :title="error" type="warning" :closable="false" show-icon />
-      <p v-if="result" class="oa-status" role="status">已导入 {{ result.importedCount }} 名员工。</p>
+      <ElAlert v-if="result" class="oa-inline-alert oa-import-success" :title="`已导入 ${result.importedCount} 名员工，源文件及逐行内容已从当前预览清除。`" type="success" :closable="false" show-icon />
     </section>
     <section v-if="preview" class="oa-surface oa-import-preview" aria-labelledby="oa-import-preview">
       <div class="oa-section-head">
@@ -161,7 +67,14 @@ async function confirm() {
           >{{ uncertain ? '重试同一预览' : '确认导入' }}</ElButton>
         </div>
       </div>
-      <pure-table :data="preview.rows" :columns="columns" row-key="row" max-height="560">
+      <p v-if="preview.status === 'PREVIEW'" class="oa-muted">预览有效至 {{ expiry }}；离开页面后清除当前内容。</p>
+      <ElAlert v-if="preview.status === 'EXPIRED'" class="oa-inline-alert" title="预览已过期，敏感内容已清理。请重新选择文件并预览。" type="warning" :closable="false" show-icon />
+      <div v-if="preview.status === 'PREVIEW' && !invalidated" class="oa-import-controls">
+        <div class="oa-segmented" aria-label="导入预览筛选"><button type="button" :aria-pressed="!errorsOnly" :disabled="locked" @click="errorsOnly = false">全部行</button><button type="button" :aria-pressed="errorsOnly" :disabled="locked" @click="errorsOnly = true">仅错误行 · {{ preview.errorRows }}</button></div>
+        <ElButton :disabled="locked" :loading="pending === 'errors'" @click="downloadErrors">下载错误行</ElButton>
+      </div>
+      <p v-if="preview.status === 'PREVIEW' && errorsOnly && !rows.length" class="oa-status">没有错误行。</p>
+      <pure-table v-if="rows.length && !narrow" :data="rows" :columns="columns" row-key="row" max-height="560">
         <template #employeeNo="{ row }">{{ row.values.employeeNo }}</template>
         <template #name="{ row }">{{ row.values.name }}</template>
         <template #department="{ row }">{{ row.values.department }}</template>
@@ -171,10 +84,18 @@ async function confirm() {
         <template #validation="{ row }">
           <ElTag v-if="!row.errors.length" type="success" effect="plain">通过</ElTag>
           <ul v-else class="oa-import-errors">
-            <li v-for="(item, index) in row.errors" :key="index">{{ item.field }} · {{ item.message }}</li>
+            <li v-for="(item, index) in row.errors" :key="index">{{ fieldLabels[item.field] || '内容' }} · {{ item.message }}</li>
           </ul>
         </template>
       </pure-table>
+      <div v-if="rows.length && narrow" class="oa-import-cards" tabindex="0" aria-label="导入逐行预览">
+        <article v-for="row in rows" :key="row.row" class="oa-import-row">
+          <header class="oa-section-head"><h3>第 {{ row.row }} 行 · {{ row.values.name || '姓名未填写' }}</h3><ElTag :type="row.errors.length ? 'warning' : 'success'" effect="plain">{{ row.errors.length ? '需修正' : '通过' }}</ElTag></header>
+          <dl class="oa-import-values"><div v-for="field in [{key:'employeeNo',label:'工号'},{key:'department',label:'部门'},{key:'birthDate',label:'出生日期'},{key:'hireDate',label:'入职日期'},{key:'salary',label:'约定工资（元）'}]" :key="field.key"><dt>{{ field.label }}</dt><dd>{{ row.values[field.key] || '—' }}</dd></div></dl>
+          <ul v-if="row.errors.length" class="oa-import-errors"><li v-for="(item, index) in row.errors" :key="index">{{ item.message }}</li></ul>
+        </article>
+      </div>
     </section>
+    <ImportHistory :revision="revision" :disabled="locked" @open="open" />
   </section>
 </template>

@@ -1,4 +1,4 @@
-"""Read synthetic M1–M5 records from an upgraded or isolated restored API."""
+"""Read synthetic M1–M6 records from an upgraded or isolated restored API."""
 import argparse
 import hashlib
 import json
@@ -6,7 +6,7 @@ from pathlib import Path
 
 from oa_api import api, download, fixture_pdf, local_base, login, verify_saved
 from oa_m2_api import request_detail
-from oa_m3_api import call, page_all
+from oa_m3_api import call, page_all, send
 
 
 def main():
@@ -17,6 +17,7 @@ def main():
     parser.add_argument("--m3-state", type=Path)
     parser.add_argument("--m4-state", type=Path)
     parser.add_argument("--m5-state", type=Path)
+    parser.add_argument("--m6-state", type=Path)
     args = parser.parse_args()
     assert api(args.base, "/health")["database"] == "ok"
     admin, _ = login(args.base, "hr_admin", "HR_ADMIN")
@@ -69,6 +70,18 @@ def main():
                    if row["year"] == year]
         assert {key: annual[key] for key in state["annual"]} == state["annual"]
         print("PASS isolated restore: M5 leave snapshot, cancellation, ledger and annual counters")
+    if args.m6_state:
+        state = json.loads(args.m6_state.read_text())
+        viewer, _ = login(args.base, "hr_viewer", "HR_VIEWER")
+        contract = call(args.base, f"/contracts/{state['contractId']}", admin)
+        file, = [row for row in contract["files"] if row["id"] == state["fileId"]]
+        assert file["classification"] == "RESTRICTED" and contract["employeeId"] == state["employeeId"]
+        file_path = f"/files/{file['id']}"
+        assert send(args.base, file_path + "/preview", viewer).status == 404
+        assert download(args.base, file["id"], admin) == state["sha256"]
+        result = call(args.base, f"/employee-imports/{state['importId']}/result", admin)
+        assert result["importedCount"] == 1
+        print("PASS isolated restore: M6 restricted file bytes and scope, durable import result")
 
 
 if __name__ == "__main__":

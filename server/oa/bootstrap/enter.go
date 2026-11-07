@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/flipped-aurora/gin-vue-admin/server/oa/api"
+	"github.com/flipped-aurora/gin-vue-admin/server/oa/integration"
 	"github.com/flipped-aurora/gin-vue-admin/server/oa/router"
 	"github.com/flipped-aurora/gin-vue-admin/server/oa/service"
 	driver "github.com/go-sql-driver/mysql"
@@ -18,19 +19,9 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-type Config struct {
-	DSN            string
-	StorageDir     string
-	JWTSecret      string
-	SeedPassword   string
-	DevSeed        bool
-	MockNotifyFail bool
-}
-
 func New(config Config) (http.Handler, error) {
-	if config.DSN == "" || len(config.JWTSecret) < 32 ||
-		(config.DevSeed && (len(config.SeedPassword) < 12 || len(config.SeedPassword) > 72)) {
-		return nil, errors.New("invalid OA configuration")
+	if err := ValidateConfig(config); err != nil {
+		return nil, err
 	}
 	dir, err := prepareStorage(config.StorageDir)
 	if err != nil {
@@ -81,6 +72,10 @@ func New(config Config) (http.Handler, error) {
 		}
 	}
 
+	if err := initializeAdministrator(db, config.BootstrapAdminUsername, config.BootstrapAdminPassword, config.Production); err != nil {
+		return nil, errors.New("OA administrator initialization failed")
+	}
+
 	if err := backfillDepartments(db); err != nil {
 		return nil, errors.New("OA department backfill failed")
 	}
@@ -89,17 +84,53 @@ func New(config Config) (http.Handler, error) {
 	if err != nil {
 		return nil, errors.New("OA authentication initialization failed")
 	}
+	wecom := integration.NewWeCom(config.WeCom, config.PublicOrigin)
+	oss := integration.NewOSS(config.OSS)
+	if oss != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+		err := oss.ValidateBucket(ctx)
+		cancel()
+		if err != nil {
+			return nil, err
+		}
+	}
+	reminderDays := 0
+	if config.ContractReminderSchedule {
+		reminderDays = config.ContractReminderDays
+		if reminderDays == 0 {
+			reminderDays = 30
+		}
+	}
 	svc := service.New(db, dir, []byte(config.JWTSecret), dummyHash)
-	handler, err := router.New(api.New(svc))
+	svc.ConfigureIntegrations(wecom, oss, config.AttachmentWriteBackend, reminderDays)
+	handler, err := router.NewWithTrustedProxies(api.New(svc), config.TrustedProxies)
 	if err != nil {
 		return nil, errors.New("OA router initialization failed")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	runtime := &oaHandler{Handler: handler, pool: pool, cancel: cancel, done: make(chan struct{})}
-	go func() {
-		defer close(runtime.done)
-		svc.RunMockOutbox(ctx, config.MockNotifyFail)
-	}()
+	runtime := &oaHandler{Handler: handler, pool: pool, cancel: cancel, done: make(chan struct{}), service: svc}
+	if config.DisableWorkers {
+		close(runtime.done)
+	} else {
+		go func() {
+			defer close(runtime.done)
+			var workers sync.WaitGroup
+			for _, run := range []func(){
+				func() { svc.RunMockOutbox(ctx, config.MockNotifyFail) },
+				func() { svc.RunProviderOutbox(ctx) },
+				func() { svc.RunCleanup(ctx) },
+				func() { svc.RunContractReminders(ctx) },
+			} {
+				workers.Add(1)
+				go func() {
+					defer workers.Done()
+					run()
+				}()
+			}
+			workers.Wait()
+		}()
+	}
+
 	started = true
 	return runtime, nil
 }
@@ -107,6 +138,7 @@ func New(config Config) (http.Handler, error) {
 type oaHandler struct {
 	http.Handler
 	pool      *sql.DB
+	service   *service.Service
 	cancel    context.CancelFunc
 	done      chan struct{}
 	closeOnce sync.Once
@@ -120,4 +152,8 @@ func (h *oaHandler) Close() error {
 		h.closeErr = h.pool.Close()
 	})
 	return h.closeErr
+}
+
+func (h *oaHandler) MigrateAttachments(ctx context.Context, afterID uint, limit int, apply bool) (service.AttachmentMigrationResult, error) {
+	return h.service.MigrateAttachments(ctx, afterID, limit, apply)
 }

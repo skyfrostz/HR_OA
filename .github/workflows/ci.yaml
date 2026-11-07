@@ -24,8 +24,15 @@ jobs:
         with:
           go-version: '1.26.4'
           cache-dependency-path: server/go.sum
-      - run: go test -mod=readonly -race ./oa/...
+      - run: go test -mod=readonly -race ./oa/... ./cmd/oa
       - run: go build -mod=readonly -o /tmp/hr-oa ./cmd/oa
+  mysql-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify fresh MySQL, application and simulated WeCom/OSS
+        run: bash scripts/oa-ci-integration.sh --mock-providers
   pure-admin:
     runs-on: ubuntu-latest
     timeout-minutes: 15

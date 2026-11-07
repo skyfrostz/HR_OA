@@ -8,9 +8,14 @@
   --oa-canvas: #f5f7fb;
   --oa-line: #e7ebf2;
   --oa-font: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --oa-accent-ink: #2949a5;
+  --oa-shadow: 0 2px 8px #18223804;
 }
 
 html.dark {
+  --oa-tint: #26344d;
+  --oa-accent-ink: #b3c6ff;
+  --oa-shadow: none;
   --oa-muted: var(--el-text-color-regular);
   --oa-line: var(--el-border-color-lighter);
   --oa-accent-text: color-mix(in srgb, var(--el-color-primary) 25%, var(--el-text-color-primary));

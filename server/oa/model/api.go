@@ -105,11 +105,13 @@ type ContractView struct {
 }
 
 type FileView struct {
-	ID           uint      `json:"id"`
-	OriginalName string    `json:"originalName"`
-	Size         int64     `json:"size"`
-	ContentType  string    `json:"contentType"`
-	CreatedAt    time.Time `json:"createdAt"`
+	Classification string    `json:"classification"`
+	Version        int       `json:"version"`
+	ID             uint      `json:"id"`
+	OriginalName   string    `json:"originalName"`
+	Size           int64     `json:"size"`
+	ContentType    string    `json:"contentType"`
+	CreatedAt      time.Time `json:"createdAt"`
 }
 
 type Pagination struct {

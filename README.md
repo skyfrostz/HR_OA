@@ -7,25 +7,25 @@
 
 [快速启动](#快速启动) · [功能与交付状态](#功能与交付状态) · [系统架构](#系统架构) · [开发与验证](#开发与验证) · [运维与数据保护](#运维与数据保护) · [文档导航](#文档导航) · [许可与来源](#许可与来源)
 
-> **当前阶段：M5 已完成本地开发验收。** 工作日历、请假余额联动、版本化规则和工作台已通过真实 MySQL、PC/H5 与升级恢复验证，使用的均为模拟资料。企业微信和阿里云 OSS 已选型，尚未接入；当前版本不代表生产交付完成。
+> **当前阶段：M1–M6 既定开发功能与模拟联调已完成。** 已补齐企业微信、OSS、合同定时通知、附件分级预览、导入历史与运维能力，并通过本地 MySQL、浏览器和隔离恢复验收。用户确认外部资源尚未准备，真实企业/云环境验收未开展；当前版本不代表生产上线完成。逐项证据见 [功能验收索引](docs/FEATURE_ACCEPTANCE_MATRIX.md)。
 >
 > **许可提示：** 本仓库保留的 gin-vue-admin 固定版本采用 **BSL 1.1**，不是 Apache-2.0。该组件的生产使用限制见 [LICENSE](LICENSE)；商业或生产交付前须核实上游授权。Pure Admin 的独立 MIT 许可证见 [web-pure-admin/LICENSE](web-pure-admin/LICENSE)。
 
 ## 界面预览
 
-### 真实数据工作台
+### 企业身份与员工档案
 
-![Pure Admin HR 工作台，全部为模拟资料](docs/assets/m5/admin-dashboard-1440.png)
+![Pure Admin 企业微信显式绑定，全部为模拟资料](docs/assets/m6/wecom-binding-1440.png)
 
-### 个人假期与余额流水
+### 导入历史与敏感资料清理
 
-![年度额度、审批预占和余额流水，全部为模拟资料](docs/assets/m5/pc-leave-ledger-1440.png)
+![Excel 导入结果及历史，全部为模拟资料](docs/assets/m6/excel-result-history-1440.png)
 
-### 手机审批
+### 手机授权与审批工作台
 
-<img src="docs/assets/m5/h5-leave-task-390.png" alt="Vant H5 请假审批，全部为模拟资料" width="320" />
+<img src="docs/assets/m6/wecom-signed-in-390.png" alt="Vant H5 模拟企业授权后的实际工作台，全部为模拟资料" width="320" />
 
-截图来自 2026-11-07 最终 M5 镜像的本地浏览器验收。[更多浅深色与窄屏截图](docs/VALIDATION_M5.md#实际页面截图)。当前页面使用真实业务 API；演示账号和截图中的员工资料仅用于开发测试。[M4 原有人事、合同和组织页面](docs/VALIDATION_M4.md#实际页面截图)继续保留。
+截图来自 2026-11-07 M6 组合镜像的本地浏览器验收。[更多浅深色与窄屏截图](docs/VALIDATION_M6.md#实际页面截图)。页面使用真实 OA API；企业授权和 OSS 连接本地模拟服务，演示账号和员工资料仅用于开发测试。[M4 人事与组织页面](docs/VALIDATION_M4.md#实际页面截图)及 [M5 假期与审批页面](docs/VALIDATION_M5.md#实际页面截图)保留历史验证记录。
 
 ## 功能与交付状态
 
@@ -35,14 +35,15 @@
 | 员工账号 | 开通/绑定、员工与审批人角色、密码重置、启停、离职及当前/未来待办交接 | 保护管理账号和本人账号；旧会话持续撤销；本轮不含返聘 |
 | 业务变更历史 | 工资、部门、年假、合同、账号与在职状态的前后值、操作者及原因 | 与业务同事务；工资事件按授权排除；不虚构历史记录 |
 | 请假与余额 | 可配置类型、周工作日及日期例外、半天和跨年预览；提交预占、批准扣减、驳回/撤回释放、撤销冲回 | 人工已用与审批已用分开，扣额度类型共用年度年假台账；不自动计算法定额度或结转，旧申请不追溯扣款 |
-| 劳动合同 | 草稿编辑、签署登记、终止、续约关联、定点查询、私有附件上传和鉴权下载 | 版本与状态检查；签署登记不等于电子签章；附件使用本地私有卷 |
-| 到期提醒 | 已逾期及未来 1–90 天到期查询、有效续约排除、合同跳转 | 按上海日历计算；当前为页面查询，尚无企业微信定时推送 |
-| Excel | 模板下载、逐行预览与错误反馈、整批确认、按已应用筛选授权导出 | 仅新增员工；导入最多 1000 行/2 MiB，导出最多 5000 条授权记录 |
+| 劳动合同 | 草稿编辑、签署登记、终止、续约关联、定点查询、普通/敏感附件、受控图片/PDF预览和鉴权下载 | 版本与状态检查；签署登记不等于电子签章；支持本地私有卷和 OSS 适配 |
+| 到期提醒 | 已逾期及未来 1–90 天查询、有效续约排除、合同跳转；可开启定时站内/企业提醒 | 上海日历；定时通知默认关闭，开启后按合同版本/阈值/收件人去重，真实企业发送需配置 |
+| Excel | 模板、逐行预览、仅错误行与错误文件下载、到期清理、整批确认、历史结果和筛选授权导出 | 仅新增员工；导入最多 1000 行/2 MiB，导出最多 5000 条授权记录；历史按创建者隔离 |
 | 顺序审批 | PC/H5 请假、报销、通用申请；发起、待办、已办、通过、驳回、转交、重提、撤回和催办；管理员异常交接及撤销已批新版请假 | 按类型、直属部门、报销金额和优先级配置 1–10 个顺序步骤；历史保留原规则，无匹配时用负责人 → 复核演示路径 |
-| 审批可靠性 | 幂等重试、并发状态检查、事务审计、outbox 和通知失败重试 | 当前通知为模拟站内投递，不代表真实企业消息 |
+| 审批可靠性 | 幂等重试、并发状态检查、事务审计、outbox 和受控重试 | 投递区分模拟、API接受、失败和未知；未知结果不盲重投，接受不代表送达/已读 |
+| 企业身份 | 企业微信 PC 扫码/桌面授权、H5 内授权、已有员工显式绑定、一次性登录票据 | 不自动建号或提权；默认禁用，真实企业资源待配置 |
 | 工作台 | 当前角色待办、本人申请、合同到期和管理员异常计数，直达授权列表；本人余额和流水 | 真实 API 数据，不展示虚构趋势；H5 合同入口跳转 PC 管理端并独立登录 |
 | 访问控制 | 统一身份、路径/方法授权、员工行权限、工资字段权限、附件权限 | 前端隐藏按钮不替代后端鉴权 |
-| 数据恢复 | 数据库与私有附件成对备份、校验和、独立环境恢复读回 | 本机演练已通过，异地保留策略和生产容灾尚未验收 |
+| 数据恢复 | 成对备份、校验和、独立恢复、可移植运行镜像与恢复清单 | 真实异机恢复、云对象独立备份和生产容灾需另行验收 |
 
 ## 系统架构
 
@@ -53,9 +54,10 @@ flowchart LR
     WEB --> API["Go / Gin · OA API"]
     API --> AUTH["JWT / Casbin / 行与字段权限"]
     API --> DB[("MySQL · 业务 / 审计 / outbox")]
-    API --> FILES["私有附件卷"]
+    API --> FILES["本地私有卷 / OSS 私有对象"]
+    API --> SSO["企业微信身份适配"]
     DB --> WORKER["通知 worker"]
-    WORKER --> MOCK["模拟站内投递"]
+    WORKER --> MOCK["站内通知 / 企业微信适配"]
 ```
 
 后端遵循 `Router → API → Service → Model` 分层。OA 专用入口为 `server/cmd/oa`，业务接口前缀为 `/api/oa/v1`，响应遵循 `{ code, data, msg }`。保留的上游初始化、代码生成、插件与示例代码不等于 OA 运行时注册这些能力。
@@ -131,7 +133,7 @@ PC 与 H5 独立登录，令牌仅保存在内存，刷新后需重新登录。�
 | `OA_STORAGE_DIR` | 私有附件目录 | API 容器内 `/var/lib/oa/private` |
 | `OA_MOCK_NOTIFY_FAIL` | 模拟通知故障 | 默认 `false`，仅用于开发验收 |
 
-企业微信和 OSS 凭据尚无已启用的配置接口，不应自行添加前端 `VITE_*` 密钥。后续接入所需配置和边界见 [外部集成状态](docs/INTEGRATION_STATUS.md)。
+企业微信、OSS、生产配置检查和附件迁移命令见 [M6 运维说明](docs/M6_OPERATIONS.md)。默认开发栈保留本地附件与模拟站内通知，不自动联系云服务；密钥仅在服务端私密环境配置，不能放进 `VITE_*`。客户资源状态见 [外部集成状态](docs/INTEGRATION_STATUS.md)。
 
 ## 开发与验证
 
@@ -156,8 +158,8 @@ PC 与 H5 独立登录，令牌仅保存在内存，刷新后需重新登录。�
 
 ```bash
 # 后端：在 server/ 执行
-go test -mod=readonly ./oa/...
-go test -mod=readonly -race ./oa/...
+go test -mod=readonly ./oa/... ./cmd/oa
+go test -mod=readonly -race ./oa/... ./cmd/oa
 go build -mod=readonly -o /tmp/hr-oa ./cmd/oa
 
 # PC：在 web-pure-admin/ 执行
@@ -174,9 +176,9 @@ npm run build:oa
 
 `typecheck` 检查实际 OA 生产入口可达的 TypeScript/Vue 文件；保留但未注册的上游演示源码存在旧接口类型诊断，不能将本项目的生产入口检查描述为整个上游示例树检查通过。迁入的 JavaScript 沿用 `checkJs: false`。
 
-根目录 GitHub Actions 工作流检查上述后端、PC 和 H5 构建/测试，不执行部署。它不替代真实数据库、浏览器或恢复演练；当前 CI 结果以仓库 Actions 页面为准。
+根目录 GitHub Actions 检查后端、PC、H5，并独立启动真实 MySQL 与本地模拟提供商做集成测试，不执行部署。全新 checkout 可从仓库根目录执行 `bash scripts/oa-ci-integration.sh` 验证基础流程，追加 `--mock-providers` 执行与 CI 相同的企业微信/OSS 联调；无需已有 `.env` 或旧验收数据。CI 不替代客户环境、浏览器和恢复演练；当前结果以 Actions 页面为准。
 
-M4 基线提交 `7e8a338` 已通过 [CI 42330476548](https://github.com/skyfrostz/HR_OA/actions/runs/42330476548) 的后端、Pure 和 H5 三项检查。M5 发布触发同一工作流；当前状态见页首徽章与 [Actions 运行记录](https://github.com/skyfrostz/HR_OA/actions/workflows/ci.yaml)。历史失败与修复保留在[商业交付审查](docs/COMMERCIAL_REVIEW.md)及 [M4 验证记录](docs/VALIDATION_M4.md#发布后的-ci-修复)。
+M5 基线提交 `d2f2fa1` 已通过 [CI 42333448464](https://github.com/skyfrostz/HR_OA/actions/runs/42333448464)。M6 在原后端、Pure、H5 检查之外新增独立 MySQL 与模拟提供商集成任务；发布提交的状态见页首徽章与 [Actions 运行记录](https://github.com/skyfrostz/HR_OA/actions/workflows/ci.yaml)。历史失败与修复保留在[商业交付审查](docs/COMMERCIAL_REVIEW.md)及 [M4 验证记录](docs/VALIDATION_M4.md#发布后的-ci-修复)。
 
 ### 端到端验收
 
@@ -187,6 +189,7 @@ M4 基线提交 `7e8a338` 已通过 [CI 42330476548](https://github.com/skyfrost
 - [Pure Admin 与 M3 验证](docs/VALIDATION_M3.md)
 - [M4 第一批验证](docs/VALIDATION_M4.md)
 - [M5 请假与审批验证](docs/VALIDATION_M5.md)
+- [M6 集成与功能收口验证](docs/VALIDATION_M6.md)
 
 `tests/` 下的验收会写入模拟数据，部分脚本还会短暂改变测试账号权限或重建容器。`tests/results/` 中的状态文件、浏览器环境和升级前快照是相关脚本的前置条件，不随仓库分发。请按 [运行说明](docs/LOCAL_DEVELOPMENT.md) 和 [部署/验收说明](deploy/oa/README.md) 在专用开发环境执行，勿对实际业务库运行这些场景。
 
@@ -223,10 +226,20 @@ bash scripts/oa-backup.sh restore "$archive" \
 
 恢复命令创建独立临时数据库和附件目录，验证记录 ID、版本、字段与附件摘要，完成后清理隔离容器。它不会覆盖活动数据卷，也不等于已有生产级异地备份、加密保留或灾备切换方案。
 
+M6 另提供无需历史测试 JSON 的可移植校验路径：
+
+```bash
+portable="$(bash scripts/oa-backup.sh pack "$archive")"
+bash scripts/oa-backup.sh verify "$portable"
+bash scripts/oa-backup.sh restore-check "$portable"
+```
+
+此包包含 API/MySQL 镜像、数据库、本地私有附件和独立清单，用于隔离恢复及数据摘要验证。Web 镜像、客户密钥、云端对象备份和生产 HTTPS 配置需单独交付；本机可移植演练不能称为真实异机切换完成。
+
 ### 当前安全边界
 
 - 服务端按角色、员工行范围和字段检查权限，私有附件必须鉴权下载。
-- 工资权限针对结构化字段及 Excel 导出。查阅员仍可下载授权范围内的合同附件；若原合同包含工资，其原文不会自动脱敏。跨所有渠道的工资保密需要另行设计附件分级或脱敏副本。
+- 工资权限覆盖结构化字段、Excel 和敏感附件。新界面上传默认敏感级，查阅员不能读取其元数据、预览或下载；旧附件兼容保留普通级，若含工资原文应先核对并改为敏感级，系统不会自动识别或脱敏合同文字。
 - 令牌不存入浏览器持久化存储，不放入 URL；敏感响应使用 `no-store`。
 - OA 入口采用明确路由范围，上游示例、初始化和代码生成端点未开放。
 - 开发账号、随机密钥、数据库内容、附件和测试结果不提交到仓库。
@@ -248,6 +261,12 @@ bash scripts/oa-backup.sh restore "$archive" \
 | 文档 | 内容 |
 | --- | --- |
 | [本地开发](docs/LOCAL_DEVELOPMENT.md) | 账号、入口、运行及验证方式 |
+| [功能验收索引](docs/FEATURE_ACCEPTANCE_MATRIX.md) | 既定功能与证据逐项对应，开发与客户环境边界 |
+| [M6 范围与 API](docs/M6_SCOPE.md) | [身份、投递、附件和导入接口](docs/M6_API_CONTRACT.md) |
+| [M6 操作说明](docs/M6_USER_GUIDE.md) | 导入历史、敏感附件、企业绑定、通知与到期提醒 |
+| [M6 配置与维护](docs/M6_OPERATIONS.md) | 生产门禁、企业/OSS配置、迁移和最小权限模板 |
+| [M6 来源核对](docs/M6_SOURCE_REUSE.md) | 官方协议、SDK 和 PDF 组件来源 |
+| [M6 验证记录](docs/VALIDATION_M6.md) | 分层结果、失败修复、运行版本与真实截图 |
 | [M5 操作说明](docs/M5_USER_GUIDE.md) | 请假预览、额度流水、顺序规则、撤回催办和异常处理 |
 | [M5 API](docs/M5_API_CONTRACT.md) | 计算快照、预占与冲回、规则版本、异常交接和工作台 |
 | [M5 设计与复用](docs/M5_UI_DESIGN.md) | 沿用 M4 的展示与交互；[实际源码复用](docs/M5_SOURCE_REUSE.md) |

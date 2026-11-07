@@ -28,6 +28,16 @@ export const useSession = defineStore('oa-session', () => {
       throw error
     }
     signal?.throwIfAborted()
+    acceptLogin(result)
+  }
+
+  async function loginWeCom(signal) {
+    const result = await request('/auth/wecom/exchange', { method: 'POST', data: {}, signal })
+    signal?.throwIfAborted()
+    acceptLogin(result)
+  }
+
+  function acceptLogin(result) {
     const remaining = Date.parse(result.expiresAt) - Date.now()
     if (!result.token || !result.user || !result.permissions || !(remaining > 0)) {
       throw new OaError(0, '登录响应异常，请重新登录。')
@@ -53,5 +63,5 @@ export const useSession = defineStore('oa-session', () => {
     }
   }
 
-  return { account, notice, canWrite, canReadSalary, login, logout, authorized }
+  return { account, notice, canWrite, canReadSalary, login, loginWeCom, logout, authorized }
 })

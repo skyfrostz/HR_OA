@@ -58,5 +58,7 @@ export default {
     { path: "/workflow-settings", name: "OaWorkflowSettings", component: () => import("@/oa/workflow-settings.vue"), meta: { title: "请假与审批配置", icon: Settings, roles: ["HR_ADMIN"], rank: 8 } },
     { path: "/approved-leaves", name: "OaApprovedLeaves", component: () => import("@/oa/approved-leaves.vue"), meta: { title: "已批请假", icon: Leave, roles: ["HR_ADMIN"], rank: 9 } },
     { path: "/workflow-exceptions", name: "OaWorkflowExceptions", component: () => import("@/oa/workflow-exceptions.vue"), meta: { title: "审批异常", icon: Alert, roles: ["HR_ADMIN"], rank: 10 } },
+    { path: "/integrations", name: "OaIntegrations", component: () => import("@/oa/integrations.vue"), meta: { title: "集成状态", icon: Settings, roles: ["HR_ADMIN"], rank: 11 } },
+    { path: "/notifications", name: "OaNotifications", component: () => import("@/oa/notifications.vue"), meta: { title: "站内通知", icon: Reminder, rank: 12 } },
   ]
 } satisfies RouteRecordRaw;

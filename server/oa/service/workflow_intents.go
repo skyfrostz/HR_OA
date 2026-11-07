@@ -84,6 +84,7 @@ func (s *Service) withIntent(ctx context.Context, actorID uint, route, key strin
 		defer releaseIntentLock(conn, lockKey)
 
 		return connection.Transaction(func(tx *gorm.DB) error {
+			tx = s.notificationTx(tx)
 			if err := authorize(tx); err != nil {
 				return err
 			}

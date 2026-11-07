@@ -1,13 +1,16 @@
 # syntax=docker/dockerfile:1
 FROM golang:1.26.4-bookworm AS api-build
+ARG OA_BUILD_VERSION=development
 WORKDIR /src
 COPY server/ ./
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -mod=readonly -trimpath -o /out/hr-oa ./cmd/oa
+    printf '%s\n' "$OA_BUILD_VERSION" | grep -Eq '^(development|[0-9a-f]{7,40}|v[0-9]+(\.[0-9]+){2})$' && \
+    CGO_ENABLED=0 go build -mod=readonly -trimpath -ldflags "-X main.buildVersion=$OA_BUILD_VERSION" -o /out/hr-oa ./cmd/oa
 
 FROM alpine:3.23.4 AS api
 RUN addgroup -S -g 10001 oa && adduser -S -D -H -u 10001 -G oa oa \
-    && install -d -o oa -g oa -m 0700 /var/lib/oa
+    && install -d -o oa -g oa -m 0700 /var/lib/oa \
+    && test -s /etc/ssl/certs/ca-certificates.crt
 COPY --from=api-build /out/hr-oa /usr/local/bin/hr-oa
 USER 10001:10001
 EXPOSE 8888

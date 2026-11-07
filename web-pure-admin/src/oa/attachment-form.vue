@@ -12,6 +12,7 @@ const session = useSession()
 const heading = useTemplateRef('heading')
 onMounted(() => heading.value.focus())
 const selectedFile = shallowRef(null)
+const classification = shallowRef('RESTRICTED')
 const busy = shallowRef(false)
 const requiresRefresh = shallowRef(false)
 const error = shallowRef('')
@@ -39,7 +40,7 @@ async function submit() {
   error.value = ''
   try {
     await session.authorized('/contracts/' + props.contractId + '/files', {
-      method: 'POST', file: selectedFile.value
+      method: 'POST', file: selectedFile.value, fileFields: { classification: classification.value }
     })
     emit('uploaded')
   } catch (cause) {
@@ -83,6 +84,9 @@ async function refresh() {
         :disabled="busy"
         @change="selectFile"
       >
+      <label v-if="!requiresRefresh" for="oa-upload-classification">附件访问范围</label>
+      <select v-if="!requiresRefresh" id="oa-upload-classification" v-model="classification" :disabled="busy"><option value="RESTRICTED">敏感 · 管理员与合同所属员工</option><option value="STANDARD">普通 · 按合同权限查看</option></select>
+      <p class="oa-muted">含工资或其他敏感信息时，请保留“敏感”。</p>
       <div class="oa-actions">
         <ElButton v-if="requiresRefresh" :loading="busy" @click="refresh">刷新并核对附件</ElButton>
         <ElButton

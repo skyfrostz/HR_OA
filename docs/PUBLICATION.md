@@ -31,3 +31,11 @@
 本批内容包括员工服务端搜索、精确部门筛选、分页及同条件导出，部门草稿保护，Pure 浅深色修复，H5 刷新，API/Web 自动重启，以及 Pure 登录测试等待与独立 CI 诊断。真实 MySQL、四角色范围、5000/5001 行边界、Chromium 和自动恢复的本地验证见 [商业审查报告](COMMERCIAL_REVIEW.md)。
 
 `COMMERCIAL_REVIEW_SOURCE_SHA256SUMS` 保留文档收口时 45 项文件快照。此次发布更新 README、发布记录和需求状态，不回写该快照；源代码/镜像验收绑定继续以 QA 报告为准。此前远端失败记录保留；新运行须关联实际提交，不能将原运行改写为成功。最新状态见 [main 工作流](https://github.com/skyfrostz/HR_OA/actions/workflows/ci.yaml?query=branch%3Amain)。
+
+## M6 既定功能收口发布（2026-11-07）
+
+本批接续 M5 `d2f2fa1026eae443940f0b51a864292c23eab4a8`，包含企业微信 PC/H5 一次性登录、受控成员绑定和通知适配；合同定时提醒；官方 OSS SDK 私有附件和可恢复迁移；普通/敏感分类、PDF/图片预览；Excel 错误导出、到期清理和导入历史；配置检查、版本迁移、可移植恢复和独立 MySQL CI。
+
+按用户“暂未准备，先完成实现与模拟联调”的确认，本轮以本地真实 OA API、MySQL、模拟提供商和 Chromium 验收。M1–M6 资料与附件保留并隔离恢复，可移植恢复验证25张表与49份附件。前端继续使用 Pure/Vant 样式，原始页面截图随文档保存。详见 [M6 验证](VALIDATION_M6.md)、[功能索引](FEATURE_ACCEPTANCE_MATRIX.md)和 [来源许可](M6_SOURCE_REUSE.md)。
+
+发布仅包含源码、测试夹具、配置模板、文档和合成资料截图。私密配置、真实凭据、数据库、备份包和运行日志不入库。CI 增加无旧状态依赖的 MySQL/模拟提供商检查；对应 main 提交的四项远端结果仍以 Actions 为准。真实客户应用、Bucket、HTTPS 部署和异机恢复保留 NOT RUN，不将模拟验收解释为生产上线。

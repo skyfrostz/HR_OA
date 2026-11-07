@@ -6,6 +6,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/flipped-aurora/gin-vue-admin/server/oa/model"
 	"github.com/flipped-aurora/gin-vue-admin/server/oa/service"
 	"github.com/gin-gonic/gin"
 )
@@ -70,6 +71,7 @@ func (a *API) PreviewEmployeeImport(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Produce json
 // @Param id path string true "不透明预览 ID"
+// @Param errorsOnly query bool false "仅返回有错误的源行"
 // @Success 200 {object} response.Response{data=model.ImportPreview}
 // @Failure 401,403,404,500 {object} response.Response{data=errorData}
 // @Router /api/oa/v1/employee-imports/{id} [get]
@@ -78,6 +80,21 @@ func (a *API) EmployeeImportPreview(c *gin.Context) {
 	if err != nil {
 		fail(c, err)
 		return
+	}
+	if values, present := c.GetQueryArray("errorsOnly"); present {
+		if len(values) != 1 || (values[0] != "true" && values[0] != "false") {
+			fail(c, service.ErrInvalid)
+			return
+		}
+		if values[0] == "true" {
+			rows := make([]model.ImportRow, 0, result.ErrorRows)
+			for _, row := range result.Rows {
+				if len(row.Errors) != 0 {
+					rows = append(rows, row)
+				}
+			}
+			result.Rows = rows
+		}
 	}
 	succeed(c, http.StatusOK, result)
 }

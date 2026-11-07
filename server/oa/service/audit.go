@@ -10,6 +10,8 @@ import (
 )
 
 const (
+	auditAttachment    = "ATTACHMENT"
+	auditWeComBinding  = "WECOM_BINDING"
 	auditLeaveType     = "LEAVE_TYPE"
 	auditLeaveCalendar = "LEAVE_CALENDAR"
 	auditApprovalRule  = "APPROVAL_RULE"
@@ -77,7 +79,10 @@ func auditQuery(db, employees *gorm.DB, actor model.Actor, filter model.AuditFil
 		query = query.Where("employee_id IN (?)", employees)
 	}
 	if !actor.CanReadSalary() {
-		query = query.Where("type <> ?", model.AuditSalary)
+		query = query.Where("type NOT IN ?", []string{model.AuditSalary, auditAttachment})
+	}
+	if !actor.CanWrite() {
+		query = query.Where("type <> ?", auditWeComBinding)
 	}
 	if filter.Type != "" {
 		query = query.Where("type = ?", filter.Type)
@@ -97,7 +102,7 @@ func auditQuery(db, employees *gorm.DB, actor model.Actor, filter model.AuditFil
 func (s *Service) AuditEvents(ctx context.Context, actor model.Actor, p model.Pagination, filter model.AuditFilter) (model.Page[model.AuditEvent], error) {
 	page := model.NewPage[model.AuditEvent](p)
 	switch filter.Type {
-	case "", model.AuditSalary, model.AuditDepartment, model.AuditAnnualLeave, model.AuditContract, model.AuditAccount, model.AuditEmployment, auditLeaveType, auditLeaveCalendar, auditApprovalRule:
+	case "", model.AuditSalary, model.AuditDepartment, model.AuditAnnualLeave, model.AuditContract, model.AuditAccount, model.AuditEmployment, auditLeaveType, auditLeaveCalendar, auditApprovalRule, auditAttachment, auditWeComBinding:
 	default:
 		return page, ErrInvalid
 	}

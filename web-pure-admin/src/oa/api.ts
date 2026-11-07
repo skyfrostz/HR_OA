@@ -25,6 +25,7 @@ export type RequestOptions = {
   method?: string;
   data?: object;
   file?: File;
+  fileFields?: Record<string, string>;
   token?: string;
   signal?: AbortSignal;
   sessionSignal?: AbortSignal;
@@ -34,7 +35,7 @@ export type RequestOptions = {
 
 export async function request<T>(
   path: string,
-  { method = "GET", data, file, token, signal, sessionSignal, binary = false, idempotencyKey }: RequestOptions = {}
+  { method = "GET", data, file, fileFields, token, signal, sessionSignal, binary = false, idempotencyKey }: RequestOptions = {}
 ): Promise<T> {
   const headers = new Headers();
   let body: BodyInit | undefined;
@@ -43,6 +44,7 @@ export async function request<T>(
   if (file) {
     const form = new FormData();
     form.append("file", file);
+    for (const [key, value] of Object.entries(fileFields || {})) form.append(key, value);
     body = form;
   } else if (data) {
     headers.set("Content-Type", "application/json");
@@ -61,7 +63,7 @@ export async function request<T>(
   try {
     const response = await fetch(API + path, {
       method, headers, body, signal: controller.signal,
-      credentials: "omit", cache: "no-store", redirect: "error"
+      credentials: path === "/auth/wecom/exchange" ? "same-origin" : "omit", cache: "no-store", redirect: "error"
     });
     if (!response.ok) {
       const errorCode = response.headers.get("Content-Type")?.includes("application/json")

@@ -62,6 +62,8 @@ func fail(c *gin.Context, err error) {
 		Fail(c, http.StatusConflict, "TRANSFER_LIMIT", "已达到转交次数上限")
 	case errors.Is(err, service.ErrStaleRecord):
 		Fail(c, http.StatusConflict, "STALE_RECORD", "记录已变更，请刷新")
+	case errors.Is(err, service.ErrIntegrationDisabled):
+		Fail(c, http.StatusServiceUnavailable, "INTEGRATION_DISABLED", "集成未启用")
 	case errors.Is(err, service.ErrInvalidState):
 		Fail(c, http.StatusConflict, "INVALID_STATE", "当前状态不允许此操作")
 	case errors.Is(err, service.ErrAccountConflict):

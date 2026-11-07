@@ -223,7 +223,7 @@ it("integrates the Pure menus with employee versions, department edits, half-day
   });
   const validId = "fixture-preview-0123456789";
   const preview = {
-    id: validId, status: "PREVIEW", totalRows: 1, validRows: 1, errorRows: 0, canConfirm: true,
+    id: validId, expiresAt: new Date(Date.now() + 30 * 60_000).toISOString(), status: "PREVIEW", totalRows: 1, validRows: 1, errorRows: 0, canConfirm: true,
     rows: [{
       row: 2, values: { employeeNo: "SIM-X1", name: "导入演示", department: employee.department,
         birthDate: "1995-06-01", hireDate: "2021-07-01", salary: "6000.09" }, errors: []
@@ -293,6 +293,8 @@ it("integrates the Pure menus with employee versions, department edits, half-day
       }
       return json(preview, 201);
     }
+    if (path.startsWith("/employee-imports?page=")) return json(page([]));
+    if (path === "/employee-imports/" + validId + "/result") return json({ previewId: validId, importedCount: 1, employeeIds: [19] });
     if (path === "/employee-imports/" + validId) return json({ ...preview, status: "COMMITTED", canConfirm: false });
     if (path === "/employee-imports/" + validId + "/confirm") {
       confirmations.push({ path, body: options.body });
@@ -451,11 +453,9 @@ it("integrates the Pure menus with employee versions, department edits, half-day
     expect(router.currentRoute.value.name).toBe("OaEmployeeImport");
     button("查询预览状态").click();
     await settle();
-    expect(appRoot.textContent).toContain("预览已提交");
-    button("重试同一预览").click();
-    await settle();
+    // M6 resolves committed imports through the read-only result endpoint.
     expect(appRoot.textContent).toContain("已导入 1 名员工");
-    expect(confirmations).toEqual(Array(2).fill({ path: "/employee-imports/" + validId + "/confirm", body: "{}" }));
+    expect(confirmations).toEqual(Array(1).fill({ path: "/employee-imports/" + validId + "/confirm", body: "{}" }));
     expect(router.currentRoute.value.fullPath).toBe("/employee-import");
     expect(JSON.stringify(Object.entries(localStorage))).not.toContain(validId);
 

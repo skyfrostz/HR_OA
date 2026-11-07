@@ -44,7 +44,7 @@ export async function request(path, { method = 'GET', data, file, token, signal,
   try {
     const response = await fetch(API + path, {
       method, headers, body, signal: controller.signal,
-      credentials: 'omit', cache: 'no-store', redirect: 'error'
+      credentials: path === '/auth/wecom/exchange' ? 'same-origin' : 'omit', cache: 'no-store', redirect: 'error'
     })
     if (!response.ok) {
       let errorCode = ''

@@ -100,6 +100,14 @@ func protectedRoutes(a *api.API) []route {
 		{http.MethodGet, "/workflow-exceptions", a.WorkflowExceptions, hrWrite},
 		{http.MethodPost, "/workflow-exceptions/:id/handoff", a.HandoffException, hrWrite},
 		{http.MethodGet, "/dashboard", a.Dashboard, authenticated},
+		{http.MethodGet, "/files/:id/preview", a.PreviewFile, authenticated},
+		{http.MethodPut, "/files/:id/classification", a.UpdateClassification, hrWrite},
+		{http.MethodGet, "/employees/:id/wecom-binding", a.WeComBinding, hrWrite},
+		{http.MethodPut, "/employees/:id/wecom-binding", a.WriteWeComBinding, hrWrite},
+		{http.MethodGet, "/notification-deliveries", a.NotificationDeliveries, hrWrite},
+		{http.MethodGet, "/employee-imports", a.ImportHistory, hrWrite},
+		{http.MethodGet, "/employee-imports/:id/errors.xlsx", a.EmployeeImportErrors, hrWrite},
+		{http.MethodGet, "/employee-imports/:id/result", a.EmployeeImportResult, hrWrite},
 		{http.MethodGet, "/contract-reminders", a.ContractReminders, authenticated},
 	}
 }
@@ -122,6 +130,10 @@ func (access routeAccess) allows(role uint) bool {
 }
 
 func New(a *api.API) (*gin.Engine, error) {
+	return NewWithTrustedProxies(a, nil)
+}
+
+func NewWithTrustedProxies(a *api.API, proxies []string) (*gin.Engine, error) {
 	routes := protectedRoutes(a)
 	rbac, err := newPolicy(routes)
 	if err != nil {
@@ -131,7 +143,9 @@ func New(a *api.API) (*gin.Engine, error) {
 	engine := gin.New()
 	engine.RedirectTrailingSlash = false
 	engine.RedirectFixedPath = false
-	if err := engine.SetTrustedProxies(nil); err != nil {
+	engine.ForwardedByClientIP = len(proxies) != 0
+	engine.RemoteIPHeaders = []string{"X-Forwarded-For"}
+	if err := engine.SetTrustedProxies(proxies); err != nil {
 		return nil, err
 	}
 	engine.Use(securityHeaders, gin.CustomRecoveryWithWriter(io.Discard, func(c *gin.Context, _ any) {
@@ -144,6 +158,10 @@ func New(a *api.API) (*gin.Engine, error) {
 	oa := engine.Group(prefix)
 	oa.GET("/health", a.Health)
 	oa.POST("/auth/login", newLoginLimiter().handle, a.Login)
+	oa.GET("/integration/status", a.IntegrationStatus)
+	oa.GET("/auth/wecom/start", newLoginLimiter().handle, a.StartWeCom)
+	oa.GET("/auth/wecom/callback", newLoginLimiter().handle, a.CompleteWeCom)
+	oa.POST("/auth/wecom/exchange", newLoginLimiter().handle, a.ExchangeWeCom)
 	protected := oa.Group("", a.Authenticate, authorize(rbac))
 	for _, endpoint := range routes {
 		protected.Handle(endpoint.method, endpoint.path, endpoint.handler)

@@ -63,6 +63,10 @@ type Contract struct {
 func (Contract) TableName() string { return "oa_contracts" }
 
 type ContractFile struct {
+	Classification string `gorm:"size:16;not null;default:STANDARD"`
+	Version        int    `gorm:"not null;default:1"`
+	StorageBackend string `gorm:"size:8;not null;default:local;index"`
+	SHA256         string `gorm:"size:64;not null;default:''"`
 	global.GVA_MODEL
 	ContractID   uint   `gorm:"not null;index"`
 	OriginalName string `gorm:"size:255;not null"`

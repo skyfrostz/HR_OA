@@ -288,7 +288,7 @@ def lifecycle(browser, base, state, artifacts):
         page.wait_for_load_state("networkidle")
     expect(article).to_be_visible()
     expect(article.get_by_text("已终止", exact=True)).to_be_visible()
-    expect(article.get_by_text("m4-fixture.pdf", exact=True)).to_be_visible()
+    expect(button(article, "预览 m4-fixture.pdf")).to_be_visible()
     button(article, "查看合同详情").click()
     contract_history = dialog.get_by_role("region", name="合同状态与版本历史")
     expect(contract_history.get_by_text("终止 · 合同", exact=True)).to_be_visible()

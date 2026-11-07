@@ -17,7 +17,7 @@ const views = {
   mine: { heading: '我的申请', path: '/requests', empty: '还没有提交过申请。' },
   pending: { heading: '待办', path: '/tasks', empty: '当前没有待审批任务。' },
   history: { heading: '已办', path: '/tasks/history', empty: '还没有审批操作。' },
-  notifications: { heading: '站内通知', path: '/notifications', empty: '暂无站内模拟通知。' }
+  notifications: { heading: '站内通知', path: '/notifications', empty: '暂无站内通知。' }
 }
 
 const view = computed(() => views[props.view])
@@ -26,7 +26,7 @@ const { result, loading, error, load } = useRemote((signal) =>
 )
 const records = computed(() => (result.value?.list || []).map((item) => {
   if (props.view === 'notifications') {
-    return { id: item.id, requestId: item.requestId, title: item.title, badge: '模拟', tone: 'primary', date: item.createdAt }
+    return { id: item.id, requestId: item.requestId, isContract: item.kind === 'CONTRACT_EXPIRING', canOpen: Number.isSafeInteger(item.requestId) && item.requestId > 0, title: item.title, badge: ({ mock: '模拟', 'wecom-mock': '模拟 API 已接受', wecom: '企业 API 已接受' })[item.deliveryMode] || '投递模式未知', tone: 'primary', date: item.createdAt }
   }
   const isMine = props.view === 'mine'
   const isHistory = props.view === 'history'
@@ -59,7 +59,7 @@ onUnmounted(() => document.removeEventListener('visibilitychange', refreshWhenVi
     <div class="h5-heading h5-list-heading">
       <div>
         <h1 id="h5-list-heading" ref="heading" tabindex="-1">{{ view.heading }}</h1>
-        <p v-if="view.path === '/notifications'" class="h5-muted">仅接收模拟站内通知。</p>
+        <p v-if="view.path === '/notifications'" class="h5-muted">每条记录标明投递模式；API 接受不代表已送达或已读。</p>
       </div>
       <Button size="small" plain type="primary" @click="load">刷新</Button>
     </div>
@@ -71,14 +71,20 @@ onUnmounted(() => document.removeEventListener('visibilitychange', refreshWhenVi
     />
     <ul v-if="!loading && records.length" class="h5-list">
       <li v-for="record in records" :key="record.id">
-        <button
+        <article v-if="view.path === '/notifications' && (!record.canOpen || record.isContract)" class="h5-card">
+          <div class="h5-record-head"><strong class="h5-record-title">{{ record.title }}</strong><Tag class="h5-delivery-mode" plain type="primary">{{ record.badge }}</Tag></div>
+          <p class="h5-muted">{{ record.isContract ? '合同即将到期，请前往 PC 管理端核对期限及续约情况。' : '此通知没有可打开的申请。' }}</p>
+          <a v-if="record.isContract" class="h5-dashboard-link" href="./oa.html#/contract-reminders">查看合同到期提醒</a>
+          <p class="h5-time">{{ displayDate(record.date) }}</p>
+        </article>
+        <button v-else
           type="button"
           class="h5-card h5-record-button"
           @click="emit('open', record.requestId)"
         >
           <span class="h5-record-head">
             <span class="h5-record-title">{{ record.title }}</span>
-            <Tag v-if="record.badge" :type="record.tone" plain>{{ record.badge }}</Tag>
+            <Tag v-if="record.badge" :class="{ 'h5-delivery-mode': view.path === '/notifications' }" :type="record.tone" plain>{{ record.badge }}</Tag>
           </span>
           <span class="h5-meta">
             <span v-if="record.category">{{ record.category }}</span>

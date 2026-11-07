@@ -41,7 +41,7 @@ async function retry() { finish(await mutation.retry()) }
     </div>
     <form v-else class="oa-form" autocomplete="off" @submit.prevent="submit">
       <h3 ref="heading" tabindex="-1">确认{{ actionLabels[action] }}</h3>
-      <p class="pc-muted">{{ action === 'CANCEL' ? '撤销已批准请假，按原计算记录冲回审批使用量；保留申请与流水。' : action === 'WITHDRAW' ? '撤回后停止审批并释放本次预占余额。' : '提醒当前审批人处理，仅发送模拟站内通知；每次至少间隔 5 分钟。' }}</p>
+      <p class="pc-muted">{{ action === 'CANCEL' ? '撤销已批准请假，按原计算记录冲回审批使用量；保留申请与流水。' : action === 'WITHDRAW' ? '撤回后停止审批并释放本次预占余额。' : '提醒当前审批人处理，按当前通知配置投递；每次至少间隔 5 分钟。' }}</p>
       <label :for="'pc-request-reason-' + requestId">操作原因{{ action === 'REMIND' ? '（选填）' : '' }}<textarea :id="'pc-request-reason-' + requestId" v-model="reason" :required="action !== 'REMIND'" :disabled="locked" /></label>
       <p v-if="validation || error" class="pc-message pc-message-error" role="alert">{{ validation || error }}</p>
       <div class="pc-actions">

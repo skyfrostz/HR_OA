@@ -107,6 +107,7 @@ type TransferTargetsView struct {
 }
 
 type NotificationView struct {
+	ContractID   *uint     `json:"contractId,omitempty"`
 	ID           uint      `json:"id"`
 	EventID      uint      `json:"eventId"`
 	RequestID    uint      `json:"requestId"`

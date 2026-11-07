@@ -44,7 +44,7 @@ func (s *Service) deliverNextMock(ctx context.Context, failDelivery bool) (bool,
 		now := workflowNow()
 		var event model.NotificationEvent
 		err := tx.Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
-			Where("delivered_at IS NULL AND available_at <= ?", now).
+			Where("delivered_at IS NULL AND delivery_mode = ? AND delivery_status = ? AND available_at <= ?", "mock", "PENDING", now).
 			Order("available_at ASC, id ASC").Take(&event).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil
@@ -54,6 +54,15 @@ func (s *Service) deliverNextMock(ctx context.Context, failDelivery bool) (bool,
 		}
 		handled = true
 		update := tx.Model(&event)
+		if event.ContractID != nil {
+			valid, err := s.contractEventEligible(tx, event)
+			if err != nil {
+				return err
+			}
+			if !valid {
+				return update.Update("delivery_status", "SKIPPED").Error
+			}
+		}
 		title := mockTitle(event.Kind)
 		if failDelivery || title == "" {
 			return update.Updates(map[string]any{
@@ -62,13 +71,14 @@ func (s *Service) deliverNextMock(ctx context.Context, failDelivery bool) (bool,
 		}
 		receipt := model.MockNotification{
 			EventID: event.ID, RequestID: event.RequestID, RecipientID: event.RecipientID,
+			ContractID: event.ContractID, DeliveryMode: "mock",
 			Kind: event.Kind, Title: title, CreatedAt: now,
 		}
 		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&receipt).Error; err != nil {
 			return err
 		}
 		return update.Updates(map[string]any{
-			"attempts": gorm.Expr("attempts + 1"), "delivered_at": now,
+			"attempts": gorm.Expr("attempts + 1"), "delivered_at": now, "delivery_status": "MOCK",
 		}).Error
 	}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	return handled, err
@@ -80,6 +90,8 @@ func mockBackoff(attempts uint) time.Duration {
 
 func mockTitle(kind string) string {
 	switch kind {
+	case contractReminderKind:
+		return "有劳动合同即将到期"
 	case model.TaskReminder:
 		return "申请人催办了当前待办"
 	case model.TaskAssigned:

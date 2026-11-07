@@ -50,7 +50,11 @@ func calendarDaysBetween(from, to time.Time) int64 {
 
 func (s *Service) contractReminderQuery(ctx context.Context, actor model.Actor, days int) *gorm.DB {
 	today := calendarDate(time.Now().In(businessTime))
-	return s.visibleContracts(ctx, actor).
+	return contractReminderScope(s.visibleContracts(ctx, actor), today, days)
+}
+
+func contractReminderScope(query *gorm.DB, today time.Time, days int) *gorm.DB {
+	return query.
 		Joins("JOIN oa_employees AS e ON e.id = oa_contracts.employee_id AND e.deleted_at IS NULL").
 		Where("oa_contracts.status IN ? AND oa_contracts.end_date <= ?", []string{"SIGNED", "EXPIRED"}, today.AddDate(0, 0, days)).
 		Where(`NOT EXISTS (

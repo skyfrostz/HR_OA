@@ -123,6 +123,7 @@ func (s *Service) HandoffException(ctx context.Context, actor model.Actor, taskI
 		return result, ErrInvalid
 	}
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		tx = s.notificationTx(tx)
 		if err := lockWorkflow(tx, "UPDATE"); err != nil {
 			return err
 		}

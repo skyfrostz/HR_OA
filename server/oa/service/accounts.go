@@ -184,6 +184,7 @@ func (s *Service) ActOnAccount(ctx context.Context, actor model.Actor, employeeI
 	}
 	var result model.EmployeeAccount
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		tx = s.notificationTx(tx)
 		if err := lockWorkflow(tx, "UPDATE"); err != nil {
 			return err
 		}

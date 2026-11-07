@@ -1,3 +1,4 @@
+import { oaPdfResources } from "./build/oa-pdf-resources";
 import { fileURLToPath, URL } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import vue from "@vitejs/plugin-vue";
@@ -15,6 +16,7 @@ export default defineConfig({
   publicDir: false,
   resolve: { alias: { "@": path("./src"), "@build": path("./build") } },
   plugins: [
+    oaPdfResources(),
     tailwindcss(),
     vue(),
     vueJsx(),

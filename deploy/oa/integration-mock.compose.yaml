@@ -1,0 +1,58 @@
+# Enable only with scripts/oa-ci-integration.sh --mock-providers.
+services:
+  api:
+    environment:
+      OA_PUBLIC_ORIGIN: http://127.0.0.1:${OA_CI_WEB_PORT:?}
+      OA_WECOM_MODE: mock
+      OA_WECOM_CORP_ID: oa-ci-corp
+      OA_WECOM_SECRET: ${OA_MOCK_WECOM_SECRET:?}
+      OA_WECOM_AGENT_ID: "1000001"
+      OA_WECOM_MOCK_API_BASE: http://wecom-mock:8080
+      OA_WECOM_MOCK_AUTHORIZE_URL: http://127.0.0.1:${OA_CI_MOCK_PORT:?}/authorize
+      OA_WECOM_DELIVER_NOTIFICATIONS: "true"
+      OA_CONTRACT_REMINDER_SCHEDULE: "true"
+      OA_CONTRACT_REMINDER_DAYS: "30"
+      OA_OSS_ENABLED: "true"
+      OA_OSS_MOCK: "true"
+      OA_OSS_REGION: cn-hangzhou
+      OA_OSS_BUCKET: oa-ci-private
+      OA_OSS_ENDPOINT: http://oss-mock:8080
+      OA_OSS_PREFIX: qa
+      OA_OSS_ACCESS_KEY_ID: oa-ci-access-key
+      OA_OSS_ACCESS_KEY_SECRET: ${OA_MOCK_OSS_SECRET:?}
+      OA_ATTACHMENT_WRITE_BACKEND: oss
+    depends_on:
+      wecom-mock:
+        condition: service_healthy
+  web:
+    build:
+      context: ../..
+      target: web
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${OA_CI_WEB_PORT:?}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/oa.html && wget -q -O /dev/null http://127.0.0.1:8080/h5.html && wget -q -O /dev/null http://127.0.0.1:8080/api/oa/v1/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  wecom-mock:
+    image: python:3.12.12-alpine
+    command: ["python", "-B", "/srv/provider.py"]
+    environment:
+      OA_MOCK_WECOM_SECRET: ${OA_MOCK_WECOM_SECRET:?}
+      OA_MOCK_CONTROL: ${OA_MOCK_CONTROL:?}
+    volumes:
+      - ../../tests/oa_provider_mock.py:/srv/provider.py:ro
+    ports:
+      - "127.0.0.1:${OA_CI_MOCK_PORT:?}:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2).close()"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    networks:
+      default:
+        aliases: ["oss-mock"]

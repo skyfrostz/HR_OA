@@ -159,7 +159,7 @@ func (s *Service) Notifications(ctx context.Context, actor model.Actor, p model.
 	for _, record := range records {
 		page.List = append(page.List, model.NotificationView{
 			ID: record.ID, EventID: record.EventID, RequestID: record.RequestID,
-			Kind: record.Kind, Title: record.Title, CreatedAt: record.CreatedAt.UTC(), DeliveryMode: "mock",
+			Kind: record.Kind, Title: record.Title, CreatedAt: record.CreatedAt.UTC(), DeliveryMode: record.DeliveryMode, ContractID: record.ContractID,
 		})
 	}
 	return page, nil

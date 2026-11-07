@@ -28,7 +28,7 @@ function switchView(view) {
 }
 
 function showDetail(id) {
-  if (locked.value) return
+  if (locked.value || !Number.isSafeInteger(id) || id <= 0) return
   selectedId.value = id
   previous.value = null
 }
@@ -45,6 +45,7 @@ function requestSaved(id) {
       <nav class="h5-shortcuts" aria-label="工作台与假期"><button type="button" :disabled="locked" :aria-pressed="selected === 'dashboard'" @click="switchView('dashboard')">工作台</button><button v-if="session.account?.user.employeeId" type="button" :disabled="locked" :aria-pressed="selected === 'balance'" @click="switchView('balance')">我的假期</button></nav>
       <Dashboard v-if="selected === 'dashboard' && !selectedId" @view="switchView" />
       <PersonalLeave v-else-if="selected === 'balance' && !selectedId" @open="showDetail" />
+      <RecordList v-else-if="selected === 'notifications' && !selectedId" view="notifications" @open="showDetail" />
       <template v-else-if="canSubmit || canApprove">
         <RequestEditor
           v-if="previous || (selected === 'new' && !selectedId)"
@@ -70,8 +71,8 @@ function requestSaved(id) {
         <p class="h5-muted">当前账号没有申请或审批权限。</p>
       </section>
     </main>
-    <footer class="h5-footer">HR OA · 本地开发 · 模拟站内通知</footer>
-    <div v-if="canSubmit || canApprove" class="h5-nav-shell">
+    <footer class="h5-footer">HR OA · 按账号权限访问</footer>
+    <div class="h5-nav-shell">
       <Tabbar
         class="h5-nav"
         :model-value="selected"
@@ -84,7 +85,7 @@ function requestSaved(id) {
           <template #icon><EditPen aria-hidden="true" /></template>
           发起申请
         </TabbarItem>
-        <TabbarItem name="mine" @click="switchView('mine')">
+        <TabbarItem v-if="canSubmit || canApprove" name="mine" @click="switchView('mine')">
           <template #icon><Tickets aria-hidden="true" /></template>
           我的申请
         </TabbarItem>

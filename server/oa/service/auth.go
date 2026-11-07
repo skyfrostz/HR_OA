@@ -59,6 +59,10 @@ func (s *Service) Login(ctx context.Context, input model.LoginInput) (model.Logi
 		return model.LoginView{}, ErrUnauthorized
 	}
 
+	return s.loginView(ctx, user)
+}
+
+func (s *Service) loginView(ctx context.Context, user loginAccount) (model.LoginView, error) {
 	_, session, err := s.session(ctx, user.SysUser)
 	if err != nil {
 		return model.LoginView{}, err

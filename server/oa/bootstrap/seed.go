@@ -21,7 +21,7 @@ type userAuthority struct {
 
 func (userAuthority) TableName() string { return "sys_user_authority" }
 
-func migrate(db *gorm.DB) error {
+func migrateSchema(db *gorm.DB) error {
 	identity := db.Session(&gorm.Session{NewDB: true})
 	identity.Config.IgnoreRelationshipsWhenMigrating = true
 	if err := identity.AutoMigrate(&system.SysAuthority{}, &system.SysUser{}, &userAuthority{}); err != nil {
@@ -63,20 +63,8 @@ func migrate(db *gorm.DB) error {
 
 func seed(db *gorm.DB, password string) error {
 	return db.Transaction(func(tx *gorm.DB) error {
-		for _, id := range []uint{model.HRAdmin, model.HRViewer, model.EmployeeRole, model.ApproverRole} {
-			role := system.SysAuthority{AuthorityId: id, AuthorityName: model.RoleName(id)}
-			if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&role).Error; err != nil {
-				return err
-			}
-			var persisted system.SysAuthority
-			err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-				Take(&persisted, "authority_id = ?", id).Error
-			if err != nil {
-				return err
-			}
-			if persisted.DeletedAt != nil || persisted.AuthorityName != role.AuthorityName {
-				return errors.New("development authority conflicts with existing identity")
-			}
+		if err := ensureRoles(tx); err != nil {
+			return err
 		}
 
 		for _, account := range []struct {
@@ -156,4 +144,72 @@ func seedEmployee(tx *gorm.DB, number, name string, userID *uint) error {
 		BirthDate: time.Date(1995, 5, 1, 0, 0, 0, 0, time.UTC),
 		HireDate:  time.Date(2023, 6, 1, 0, 0, 0, 0, time.UTC),
 	}).Error
+}
+
+func ensureRoles(tx *gorm.DB) error {
+	for _, id := range []uint{model.HRAdmin, model.HRViewer, model.EmployeeRole, model.ApproverRole} {
+		role := system.SysAuthority{AuthorityId: id, AuthorityName: model.RoleName(id)}
+		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&role).Error; err != nil {
+			return err
+		}
+		var persisted system.SysAuthority
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Take(&persisted, "authority_id = ?", id).Error
+		if err != nil {
+			return err
+		}
+		if persisted.DeletedAt != nil || persisted.AuthorityName != role.AuthorityName {
+			return errors.New("development authority conflicts with existing identity")
+		}
+	}
+	return nil
+}
+
+func initializeAdministrator(db *gorm.DB, username, password string, production bool) error {
+	if username == "" && !production {
+		return nil
+	}
+	return db.Transaction(func(tx *gorm.DB) error {
+		var guard model.WorkflowGuard
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Take(&guard, 1).Error; err != nil {
+			return err
+		}
+		if production {
+			var identifiers []uuid.UUID
+			for _, name := range []string{"hr_admin", "hr_viewer", "employee", "manager", "finance", "delegate"} {
+				identifiers = append(identifiers, uuid.NewSHA1(uuid.NameSpaceOID, []byte("hr-oa-local-development:"+name)))
+			}
+			var enabledSeed int64
+			if err := tx.Model(&system.SysUser{}).Where("uuid IN ? AND enable = ?", identifiers, 1).Count(&enabledSeed).Error; err != nil {
+				return err
+			}
+			if enabledSeed != 0 {
+				return errors.New("production cannot use enabled development identities")
+			}
+		}
+		var users int64
+		if err := tx.Unscoped().Model(&system.SysUser{}).Count(&users).Error; err != nil || users != 0 {
+			return err
+		}
+		if username == "" {
+			return errors.New("initial administrator configuration is required for an empty production identity store")
+		}
+		if err := ensureRoles(tx); err != nil {
+			return err
+		}
+		identifier, err := uuid.NewRandom()
+		if err != nil {
+			return err
+		}
+		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+		user := system.SysUser{UUID: identifier, Username: username, NickName: "人事管理员",
+			Password: string(hash), AuthorityId: model.HRAdmin, Enable: 1}
+		if err := tx.Create(&user).Error; err != nil {
+			return err
+		}
+		return tx.Create(&userAuthority{SysUserID: user.ID, SysAuthorityID: model.HRAdmin}).Error
+	})
 }

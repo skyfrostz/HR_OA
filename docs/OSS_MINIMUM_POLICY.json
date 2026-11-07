@@ -1,0 +1,19 @@
+{
+  "Version": "1",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "oss:GetBucketAcl",
+        "oss:GetBucketPublicAccessBlock",
+        "oss:GetBucketVersioning"
+      ],
+      "Resource": ["acs:oss:*:*:REPLACE_WITH_PRIVATE_BUCKET"]
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["oss:PutObject", "oss:GetObject"],
+      "Resource": ["acs:oss:*:*:REPLACE_WITH_PRIVATE_BUCKET/hr-oa/*"]
+    }
+  ]
+}

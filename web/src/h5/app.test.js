@@ -340,7 +340,7 @@ describe('mobile approval entry', () => {
     await clickTab(wrapper, '已办')
     expect(wrapper.text()).toContain('转交')
     await clickTab(wrapper, '站内通知')
-    expect(wrapper.text()).toContain('仅接收模拟站内通知')
+    expect(wrapper.text()).toContain('每条记录标明投递模式')
     await openRecord(wrapper, '有新的待办申请')
     expect(wrapper.text()).toContain('申请详情')
     expect(wrapper.text()).not.toContain('处理待办')

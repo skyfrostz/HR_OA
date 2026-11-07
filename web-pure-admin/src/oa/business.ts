@@ -22,7 +22,7 @@ export type ImportRow = {
 };
 
 export type ImportPreview = {
-  id: string; createdAt: string; expiresAt: string; status: "PREVIEW" | "COMMITTED";
+  id: string; createdAt: string; expiresAt: string; status: "PREVIEW" | "EXPIRED" | "COMMITTED";
   totalRows: number; validRows: number; errorRows: number; canConfirm: boolean; rows: ImportRow[];
 };
 

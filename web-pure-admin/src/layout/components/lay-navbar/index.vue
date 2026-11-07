@@ -22,7 +22,7 @@ const navigation = employeeNavigation();
     />
     <LaySidebarBreadCrumb v-else class="breadcrumb-container" />
     <div class="vertical-header-right">
-      <span class="oa-navbar-dev">本地开发</span>
+      <span class="oa-navbar-dev">人事工作台</span>
       <a
         class="oa-navbar-link"
         :href="navigation.writeLocked ? undefined : './h5.html'"
@@ -50,7 +50,7 @@ const navigation = employeeNavigation();
 .oa-settings { display: grid; place-items: center; min-width: 32px; min-height: 32px; border: 0; background: transparent; cursor: pointer; }
 @media (max-width: 560px) {
   .vertical-header-right { gap: 6px; }
-  .oa-navbar-dev, .oa-navbar-link[aria-disabled="true"] { color: var(--el-text-color-secondary); }
-.oa-navbar-user { display: none; }
+  .oa-navbar-dev, .oa-navbar-user { display: none; }
+  .oa-settings { min-width: 44px; min-height: 44px; }
 }
 </style>

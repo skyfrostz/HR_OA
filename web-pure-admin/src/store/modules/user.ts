@@ -66,6 +66,16 @@ export const useUserStore = defineStore("pure-user", () => {
       throw error;
     }
     signal?.throwIfAborted();
+    acceptLogin(result);
+  }
+
+  async function loginWeCom(signal?: AbortSignal) {
+    const result = await request<LoginResult>("/auth/wecom/exchange", { method: "POST", data: {}, signal });
+    signal?.throwIfAborted();
+    acceptLogin(result);
+  }
+
+  function acceptLogin(result: LoginResult) {
     const remaining = Date.parse(result.expiresAt) - Date.now();
     if (!result.token || !result.user || !result.permissions || !(remaining > 0)) {
       throw new OaError(0, "登录响应异常，请重新登录。");
@@ -93,7 +103,7 @@ export const useUserStore = defineStore("pure-user", () => {
     }
   }
 
-  return { account, notice, username, nickname, avatar, roles, canWrite, canReadSalary, login, logOut, authorized };
+  return { account, notice, username, nickname, avatar, roles, canWrite, canReadSalary, login, loginWeCom, logOut, authorized };
 });
 
 export function useUserStoreHook() {

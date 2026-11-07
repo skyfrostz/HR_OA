@@ -15,10 +15,10 @@
   outline: 2px solid var(--el-color-primary); outline-offset: 2px;
 }
 .oa-pure .oa-table thead, .oa-pure .oa-table tbody tr:hover { background: var(--el-fill-color-light); }
-.oa-avatar { display: grid; place-items: center; flex: 0 0 auto; width: 2.125rem; height: 2.125rem; border-radius: .5rem; background: var(--oa-tint); color: #2949a5; font-weight: 650; }
+.oa-avatar { display: grid; place-items: center; flex: 0 0 auto; width: 2.125rem; height: 2.125rem; border-radius: .5rem; background: var(--oa-tint); color: var(--oa-accent-ink); font-weight: 650; }
 .oa-avatar-large { width: 3.25rem; height: 3.25rem; border-radius: .75rem; font-size: 1.5rem; }
 .oa-actions, .oa-pagination { display: flex; align-items: center; flex-wrap: wrap; gap: .625rem; }
-.oa-count, .oa-login-label { display: inline-flex; width: fit-content; padding: .1875rem .5rem; border-radius: .375rem; background: var(--oa-tint); color: #2949a5; font-size: .75rem; font-weight: 600; }
+.oa-count, .oa-login-label { display: inline-flex; width: fit-content; padding: .1875rem .5rem; border-radius: .375rem; background: var(--oa-tint); color: var(--oa-accent-ink); font-size: .75rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .oa-pure-login { min-height: 100vh; min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); background: var(--el-bg-color-page); }
 .oa-pure-login-intro { display: grid; align-content: center; justify-items: start; gap: .875rem; padding: clamp(2rem, 7vw, 6rem); background: #1b2a47; color: #fff; }
 .oa-pure-login-intro h1 { font-size: clamp(1.75rem, 3vw, 2.75rem); font-weight: 700; }
@@ -37,6 +37,7 @@
   border: 1px solid var(--oa-line);
   border-radius: .75rem;
   padding: 1.25rem;
+  box-shadow: var(--oa-shadow);
 }
 
 .oa-detail { display: grid; gap: 1rem; }
@@ -48,13 +49,14 @@
   justify-content: space-between;
   gap: 1rem;
 }
-.oa-page-heading { margin-bottom: 1.25rem; }
+.oa-page-heading { margin-bottom: 1.5rem; gap: .875rem 1.5rem; }
+.oa-page-heading .oa-muted { margin-top: .5rem; max-width: 65ch; }
 .oa-page-heading .el-button { align-self: center; }
 .oa-table-toolbar { align-items: center; padding: .75rem 1.25rem; }
 .oa-table-toolbar > div { display: flex; align-items: center; flex-wrap: wrap; gap: .625rem; }
 
 .oa-pure :is(h1, h2, h3, h4) { margin: 0; overflow-wrap: anywhere; }
-.oa-pure h1 { font-size: clamp(1.5rem, 3vw, 1.75rem); line-height: 1.25; font-weight: 700; }
+.oa-pure h1 { font-size: clamp(1.5rem, 3vw, 1.75rem); line-height: 1.3; font-weight: 650; letter-spacing: -.025em; text-wrap: balance; }
 .oa-pure h2 { font-size: 1.125rem; font-weight: 650; }
 .oa-pure h3 { font-size: 1rem; }
 .oa-pure h4 { font-size: .9375rem; }
@@ -63,7 +65,7 @@
 .oa-error { display: grid; justify-items: start; gap: .75rem; margin-block: 1rem; }
 .oa-table-panel .oa-status, .oa-table-panel .oa-error { margin-inline: 1.25rem; }
 
-.oa-form { display: grid; gap: .75rem; margin-top: 1rem; }
+.oa-form { display: grid; gap: 1rem; margin-top: 1rem; }
 .oa-form input, .oa-form select {
   width: 100%;
   min-width: 0;
@@ -78,7 +80,7 @@
 
 .oa-form label { font-weight: 600; }
 .oa-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 1rem; }
-.oa-fields label { display: grid; align-content: start; gap: .375rem; min-width: 0; }
+.oa-fields label { display: grid; align-content: start; gap: .5rem; min-width: 0; }
 
 .oa-inline-form {
   margin-block: 1rem;
@@ -90,6 +92,8 @@
 
 .oa-inline-form .el-alert, .oa-login .el-alert, .oa-files .el-alert { margin-top: .75rem; }
 .oa-frame .el-button { min-height: 2.375rem; margin-left: 0; white-space: normal; transition-duration: 150ms; }
+.oa-pure .el-button { min-height: 2.375rem; }
+.oa-pure .oa-actions > .el-button + .el-button { margin-left: 0; }
 .oa-logout { margin-left: .25rem; }
 
 .oa-table-panel { padding: 0; overflow: clip; }
@@ -192,7 +196,8 @@
 
 .oa-directory-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; align-items: start; }
 .oa-directory-with-tree { grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr); }
-.oa-org-tree .el-tree { margin-top: .5rem; }
+.oa-org-tree .el-tree { margin-top: .5rem; --el-tree-node-content-height: 2.5rem; }
+.oa-org-tree .el-tree-node__content { border-radius: .375rem; }
 .oa-tree-node { display: flex; flex: 1; gap: .4rem; min-width: 0; align-items: center; justify-content: space-between; }
 .oa-tree-node > span:first-child { overflow: hidden; text-overflow: ellipsis; }
 .oa-tree-node > .oa-count { flex: none; margin-inline-end: .3rem; }
@@ -323,4 +328,50 @@
 
 .oa-form fieldset { min-width: 0; border: 1px solid var(--el-border-color); border-radius: .5rem; padding: .5rem; }
 .oa-form legend { padding-inline: .3rem; }
+.oa-form input[type=file] { padding: .375rem; }
+.oa-form input[type=file]::file-selector-button {
+  padding: .45rem .75rem;
+  margin-inline-end: .75rem;
+  border: 0;
+  border-radius: .25rem;
+  background: var(--oa-tint);
+  color: var(--oa-accent-ink);
+  font: inherit;
+  cursor: pointer;
+}
 @media (max-width: 38rem) { .oa-pure .el-button { min-height: 2.75rem; } }
+
+.oa-wecom-login { border-top: 1px solid var(--oa-line); margin-top: 1.25rem; padding-top: 1rem; font-size: .8125rem; }
+.oa-wecom-entry { display: flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: .5rem 1rem; border: 1px solid var(--oa-line); border-radius: .5rem; font-size: .9375rem; text-decoration: none; }
+.oa-wecom-entry[aria-disabled=true] { opacity: .6; cursor: default; }
+
+.oa-import-controls { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .75rem; margin-block: 1rem; }
+.oa-import-preview .el-table { --el-table-header-text-color: var(--el-text-color-primary); --el-table-header-bg-color: var(--el-fill-color-light); }
+.oa-file-list li { flex-wrap: wrap; padding-block: .625rem; border-bottom: 1px solid var(--oa-line); }
+.oa-file-name { flex: 1 1 12rem; overflow-wrap: anywhere; }
+.oa-attachment-preview { margin-top: 1rem; overflow: auto; max-height: 65dvh; background: #fff; border: 1px solid var(--oa-line); border-radius: .5rem; }
+.oa-attachment-preview img { display: block; max-width: 100%; margin-inline: auto; }
+.oa-attachment-preview canvas { max-width: 100%; height: auto !important; }
+.oa-attachment-dialog .el-dialog__title { overflow-wrap: anywhere; }
+
+.oa-integration-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: 1rem; }
+.oa-integration-status { margin: 1rem 0 .75rem; font-weight: 650; color: var(--oa-accent-text); }
+.oa-setup-steps { list-style: decimal; padding-inline-start: 1.25rem; margin-block: 1rem; }
+.oa-setup-steps li + li { margin-top: .65rem; }
+
+.oa-file-input { position: absolute; width: 1px !important; height: 1px; min-height: 0 !important; padding: 0 !important; clip-path: inset(50%); overflow: hidden; }
+.oa-file-picker { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem .75rem; padding: .75rem; border: 1px dashed var(--el-border-color); border-radius: .5rem; background: var(--el-fill-color-light); }
+.oa-file-picker .oa-muted { margin: 0; overflow-wrap: anywhere; }
+.oa-import-cards { display: grid; gap: .75rem; max-height: 34rem; overflow: auto; margin-top: 1rem; }
+.oa-import-cards:focus-visible { outline: 2px solid var(--el-color-primary); outline-offset: 2px; }
+.oa-import-row { padding: .875rem; border: 1px solid var(--oa-line); border-radius: .5rem; }
+.oa-import-values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin-block: .875rem; }
+.oa-import-values dt { color: var(--oa-muted); font-size: .8125rem; }
+.oa-import-values dd { margin: .2rem 0 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.oa-import-row .oa-import-errors { padding-top: .75rem; border-top: 1px solid var(--oa-line); color: var(--el-text-color-primary); }
+
+.oa-notification-list { display: grid; gap: .875rem; padding: 0; list-style: none; margin: 0; }
+.oa-notification-open { margin-top: 1rem; }
+
+.oa-pure .oa-delivery-status.el-tag--info { --el-tag-text-color: var(--el-text-color-regular); }
+.oa-pure .oa-import-success .el-alert__title { color: var(--el-text-color-primary); }

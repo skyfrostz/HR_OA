@@ -93,27 +93,35 @@ type WorkflowIntent struct {
 func (WorkflowIntent) TableName() string { return "oa_intents" }
 
 type NotificationEvent struct {
-	ID          uint       `gorm:"primaryKey"`
-	ActionID    uint       `gorm:"not null;uniqueIndex"`
-	RequestID   uint       `gorm:"not null"`
-	RecipientID uint       `gorm:"not null"`
-	Kind        string     `gorm:"size:32;not null"`
-	Attempts    uint       `gorm:"not null"`
-	AvailableAt time.Time  `gorm:"not null;index:ix_oa_outbox_due,priority:2"`
-	DeliveredAt *time.Time `gorm:"index:ix_oa_outbox_due,priority:1"`
-	CreatedAt   time.Time
+	ID              uint  `gorm:"primaryKey"`
+	ActionID        *uint `gorm:"uniqueIndex"`
+	RequestID       uint  `gorm:"not null"`
+	ContractID      *uint
+	ContractVersion int        `gorm:"not null;default:0"`
+	ReminderDays    int        `gorm:"not null;default:0"`
+	ScheduleKey     *string    `gorm:"size:100;uniqueIndex"`
+	RecipientID     uint       `gorm:"not null"`
+	Kind            string     `gorm:"size:32;not null"`
+	DeliveryMode    string     `gorm:"size:16;not null;default:mock;index:ix_oa_outbox_dispatch,priority:1"`
+	DeliveryStatus  string     `gorm:"size:16;not null;default:PENDING;index:ix_oa_outbox_dispatch,priority:2"`
+	Attempts        uint       `gorm:"not null"`
+	AvailableAt     time.Time  `gorm:"not null;index:ix_oa_outbox_due,priority:2;index:ix_oa_outbox_dispatch,priority:3"`
+	DeliveredAt     *time.Time `gorm:"index:ix_oa_outbox_due,priority:1"`
+	CreatedAt       time.Time
 }
 
 func (NotificationEvent) TableName() string { return "oa_notification_outbox" }
 
 type MockNotification struct {
-	ID          uint   `gorm:"primaryKey"`
-	EventID     uint   `gorm:"not null;uniqueIndex"`
-	RequestID   uint   `gorm:"not null"`
-	RecipientID uint   `gorm:"not null;index"`
-	Kind        string `gorm:"size:32;not null"`
-	Title       string `gorm:"size:100;not null"`
-	CreatedAt   time.Time
+	ContractID   *uint
+	DeliveryMode string `gorm:"size:16;not null;default:mock"`
+	ID           uint   `gorm:"primaryKey"`
+	EventID      uint   `gorm:"not null;uniqueIndex"`
+	RequestID    uint   `gorm:"not null"`
+	RecipientID  uint   `gorm:"not null;index"`
+	Kind         string `gorm:"size:32;not null"`
+	Title        string `gorm:"size:100;not null"`
+	CreatedAt    time.Time
 }
 
 func (MockNotification) TableName() string { return "oa_mock_notifications" }
