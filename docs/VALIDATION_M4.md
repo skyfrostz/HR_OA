@@ -42,6 +42,16 @@
 
 最后一轮独立 QA 日志：`.local/m4-browser-final.log`、`.local/m4-live-build-final.log`、`.local/m4-isolated-api-final.log`、`.local/m4-post-restore-final.log`。首次失败日志保留，未通过删除或放宽断言获得通过。
 
+## 发布后的 CI 修复
+
+功能提交 `09b98cc` 的 [首次 M4 CI 42330096609](https://github.com/skyfrostz/HR_OA/actions/runs/42330096609) 中，后端和 Pure 全部通过。H5 的 17 项断言通过，但 Vant 的延时布局回调在 jsdom 销毁后访问 `window`，导致未处理异常与任务失败；H5 构建因此被跳过。
+
+修复仅改变 `web/src/h5/app.test.js` 的测试生命周期：mount 前接管 timeout/animation frame，保留真实 setImmediate；unmount 后在 jsdom 仍存在时执行剩余回调，再断言定时器为零，最后恢复真实定时器及 mocks。循环上限为 100，回调异常仍会使测试失败。原有用例及断言未删改，运行源码不变。
+
+完整 17 项测试本地连续两次通过，H5 构建通过；独立 QA 再运行一次同样通过，并确认原 1507 项冻结清单中仅此测试文件不同。CI 同时增加 H5 的独立构建诊断和步骤结果摘要，测试失败仍使工作流失败。修复后远端状态以对应提交的 Actions 结果为准。
+
+[M4_SOURCE_SHA256SUMS](M4_SOURCE_SHA256SUMS) 保留 `09b98cc` 实际镜像验收时的输入快照；后续仅测试与 CI 配置的摘要单独记于 [M4_CI_FIX_SHA256SUMS](M4_CI_FIX_SHA256SUMS)。原运行镜像、浏览器与 16 张截图证据继续有效。
+
 ## 运行版本绑定
 
 [1507 项构建输入与测试摘要](M4_SOURCE_SHA256SUMS) 覆盖后端、PC/H5、脚本、Docker/Compose 和部署配置，最终构建前后逐项一致。文档与截图独立归档，不充当运行镜像证据。

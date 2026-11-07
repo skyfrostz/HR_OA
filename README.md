@@ -174,7 +174,7 @@ npm run build:oa
 
 根目录 GitHub Actions 工作流检查上述后端、PC 和 H5 构建/测试，不执行部署。它不替代真实数据库、浏览器或恢复演练；当前 CI 结果以仓库 Actions 页面为准。
 
-M4 前的基线提交 `2d026e1` 已通过 [CI 42326152562](https://github.com/skyfrostz/HR_OA/actions/runs/42326152562) 的后端、Pure 和 H5 三项检查。M4 发布提交会自动触发同一工作流，状态见页首徽章与 [Actions 运行记录](https://github.com/skyfrostz/HR_OA/actions/workflows/ci.yaml)；历史失败与修复保留在[商业交付审查](docs/COMMERCIAL_REVIEW.md)。
+M4 前的基线提交 `2d026e1` 已通过 [CI 42326152562](https://github.com/skyfrostz/HR_OA/actions/runs/42326152562) 的后端、Pure 和 H5 三项检查。M4 发布提交会自动触发同一工作流，状态见页首徽章与 [Actions 运行记录](https://github.com/skyfrostz/HR_OA/actions/workflows/ci.yaml)；历史失败与修复保留在[商业交付审查](docs/COMMERCIAL_REVIEW.md)。首次 M4 CI 的 H5 测试销毁后延时回调问题及修复见 [M4 验证记录](docs/VALIDATION_M4.md#发布后的-ci-修复)。
 
 ### 端到端验收
 

@@ -101,14 +101,30 @@ async function login(wrapper) {
 describe('mobile approval entry', () => {
   let wrapper
   beforeEach(() => {
+    // Keep Vant's deferred layout measurements inside this test's DOM lifetime.
+    // Leave setImmediate real so flushPromises can still settle API responses.
+    vi.useFakeTimers({
+      toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'],
+      loopLimit: 100
+    })
     localStorage.clear()
     sessionStorage.clear()
     wrapper = mount(App, { global: { plugins: [createPinia()] } })
   })
-  afterEach(() => {
-    wrapper.unmount()
-    vi.restoreAllMocks()
-    vi.unstubAllGlobals()
+  afterEach(async () => {
+    try {
+      wrapper.unmount()
+      await flushPromises()
+      // Execute pending measurements while window still exists; do not silence
+      // their exceptions or discard them with clearAllTimers.
+      await vi.runAllTimersAsync()
+      await flushPromises()
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+      vi.unstubAllGlobals()
+    }
   })
 
   it('refreshes an empty queue and keeps the active page when resuming foreground', async () => {

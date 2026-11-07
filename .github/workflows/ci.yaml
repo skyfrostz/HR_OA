@@ -75,6 +75,22 @@ jobs:
           node-version: '24.15.0'
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - run: npm ci --no-audit --no-fund
-      - run: npm run test:oa
-      - run: npm run build:oa
+      - name: Install H5 dependencies
+        id: install
+        run: npm ci --no-audit --no-fund
+      - name: Test H5 and legacy OA interactions
+        id: test
+        run: npm run test:oa
+      - name: Build H5 entry
+        id: build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run build:oa
+      - name: Record H5 check outcomes
+        if: ${{ !cancelled() }}
+        run: |
+          {
+            printf '%s\n' '## H5 checks' '| Check | Outcome |' '| --- | --- |'
+            printf '%s\n' '| Locked install | ${{ steps.install.outcome }} |'
+            printf '%s\n' '| Interaction tests | ${{ steps.test.outcome }} |'
+            printf '%s\n' '| Production build | ${{ steps.build.outcome }} |'
+          } >> "$GITHUB_STEP_SUMMARY"

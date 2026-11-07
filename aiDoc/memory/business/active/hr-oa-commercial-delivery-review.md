@@ -44,3 +44,5 @@
 用户追加前端优化：使用 frontend-design、apple-design 等技能检索适配小组件与创新展示形式。已核对 Pure 既有组件、Element Plus/VueUse 官方资料及 Inspira UI 固定源码，选型与视觉验收见 docs/M4_UI_DESIGN.md；保留原 M4 五项任务。
 
 最终复核补齐审批分栏列表同步、账号动作后的档案版本同步，以及浅深色表格/抽屉文字对比度；7 项 Pure、17 项 H5、Go race/build、真实跨端并发及备份恢复通过。最终截图与验证记录在 docs/VALIDATION_M4.md。
+
+M4 功能已发布 09b98cc。首次 M4 CI 42330096609 后端/Pure通过，H5断言17项通过但Vant定时回调在jsdom销毁后访问window，任务失败。仅修改测试定时器清理并保留全部断言，本地两次+独立QA一次通过；CI增加H5独立build诊断。等待修复提交的远端结果，原运行代码/镜像/截图不变。
