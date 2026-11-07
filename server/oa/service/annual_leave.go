@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"strings"
 
@@ -15,18 +16,25 @@ func (s *Service) AnnualLeave(ctx context.Context, actor model.Actor, employeeID
 	if err := s.checkVisibleEmployee(ctx, actor, employeeID); err != nil {
 		return page, err
 	}
-	query := s.db.WithContext(ctx).Model(&model.AnnualLeave{}).Where("employee_id = ?", employeeID)
-	if err := query.Count(&page.Total).Error; err != nil {
-		return page, err
-	}
-	var rows []model.AnnualLeave
-	if err := query.Order("`year` DESC").Limit(p.PageSize).Offset(p.Offset()).Find(&rows).Error; err != nil {
-		return page, err
-	}
-	for _, row := range rows {
-		page.List = append(page.List, annualLeaveView(row))
-	}
-	return page, nil
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		query := tx.Model(&model.AnnualLeave{}).Where("employee_id = ?", employeeID)
+		if err := query.Count(&page.Total).Error; err != nil {
+			return err
+		}
+		var rows []model.AnnualLeave
+		if err := query.Order("`year` DESC").Limit(p.PageSize).Offset(p.Offset()).Find(&rows).Error; err != nil {
+			return err
+		}
+		for _, row := range rows {
+			totals, err := readLeaveTotals(tx, employeeID, row.Year)
+			if err != nil {
+				return err
+			}
+			page.List = append(page.List, addLeaveTotals(annualLeaveView(row), totals))
+		}
+		return nil
+	}, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
+	return page, err
 }
 
 func (s *Service) WriteAnnualLeave(ctx context.Context, actor model.Actor, employeeID uint, year int, input model.AnnualLeaveInput) (model.AnnualLeaveView, error) {
@@ -44,7 +52,19 @@ func (s *Service) WriteAnnualLeave(ctx context.Context, actor model.Actor, emplo
 	if err != nil {
 		return model.AnnualLeaveView{}, err
 	}
+	var totals leaveTotals
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := lockLeaveEmployee(tx, employeeID); err != nil {
+			return err
+		}
+		var err error
+		totals, err = readLeaveTotals(tx, employeeID, year)
+		if err != nil {
+			return err
+		}
+		if row.EntitledHalfDays < row.UsedHalfDays+totals.Reserved+totals.Used {
+			return ErrInsufficientLeave
+		}
 		event := model.AuditEvent{Type: model.AuditAnnualLeave, EmployeeID: &employeeID, Reason: reason}
 		if *input.Version == 0 {
 			if err := createError(tx.Create(&row).Error); errors.Is(err, ErrConflict) {
@@ -81,7 +101,7 @@ func (s *Service) WriteAnnualLeave(ctx context.Context, actor model.Actor, emplo
 		event.Action = "UPDATE"
 		return writeAudit(tx, actor, event, leaveAuditFields(before), leaveAuditFields(row))
 	})
-	return annualLeaveView(row), recordWriteError(err)
+	return addLeaveTotals(annualLeaveView(row), totals), recordWriteError(err)
 }
 
 func annualLeaveFromInput(employeeID uint, year int, input model.AnnualLeaveInput) (model.AnnualLeave, error) {

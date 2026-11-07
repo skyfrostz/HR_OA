@@ -31,6 +31,11 @@ export function useRemote(fetchData) {
     }
   }
 
-  onScopeDispose(() => pending?.abort())
-  return { result, loading, error, load }
+  function cancel() {
+    pending?.abort()
+    pending = undefined
+    loading.value = false
+  }
+  onScopeDispose(cancel)
+  return { result, loading, error, load, cancel }
 }

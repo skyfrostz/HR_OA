@@ -12,7 +12,7 @@ export type Employee = {
 
 export type AnnualLeave = {
   id: number; employeeId: number; year: number; entitledHalfDays: number;
-  usedHalfDays: number; remainingHalfDays: number; note: string; version: number; updatedAt: string;
+  usedHalfDays: number; approvalUsedHalfDays?: number; reservedHalfDays?: number; remainingHalfDays: number; note: string; version: number; updatedAt: string;
 };
 
 export type ImportRow = {

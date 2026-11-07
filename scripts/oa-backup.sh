@@ -99,6 +99,7 @@ restore() {
     local approval_state="${3:?Specify the synthetic approval fixture state}"
     local m3_state="${4:-}"
     local m4_state="${5:-}"
+    local m5_state="${6:-}"
     local -a extra_checks=()
     local project address image mysql_id api_id
     validate_backup "$archive"
@@ -111,6 +112,10 @@ restore() {
     if [[ -n "$m4_state" ]]; then
         test -r "$m4_state"
         extra_checks+=(--m4-state "$m4_state")
+    fi
+    if [[ -n "$m5_state" ]]; then
+        test -r "$m5_state"
+        extra_checks+=(--m5-state "$m5_state")
     fi
     set -a
     source ./.env

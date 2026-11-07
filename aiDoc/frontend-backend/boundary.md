@@ -39,3 +39,5 @@ OA 的业务契约为 `docs/OA_API_CONTRACT.md` 及 M2/M3 扩展，接口前缀 
 3. 若契约发生了长期变化，对应说明已经补到 `aiDoc/`
 
 M4 增量以 `docs/M4_API_CONTRACT.md` 为准：业务审计、员工账号/在职状态、合同状态转换、审批筛选及部门树；契约由后端维护并经总控复核。M4 视觉与复用要求见 `docs/M4_UI_DESIGN.md`。
+
+M5 范围见 docs/M5_SCOPE.md；契约以经总控复核的 docs/M5_API_CONTRACT.md 为准，保留M1–M4兼容语义和数据。

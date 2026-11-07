@@ -4,25 +4,34 @@ set +x
 umask 077
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-baseline="$PWD/.local/m4-baseline"
+milestone="${OA_QA_MILESTONE:-4}"
+case "$milestone" in
+    4) prior_state=() ;;
+    5) prior_state=(--m4-state tests/results/m4/api-state.json) ;;
+    *) printf '%s\n' 'OA_QA_MILESTONE must be 4 or 5' >&2; exit 2 ;;
+esac
+baseline="$PWD/.local/m${milestone}-baseline"
 archive="$(< "$baseline/BACKUP_PATH")"
 case "$archive" in
     "$baseline"/oa-backup.*) ;;
-    *) printf '%s\n' 'Unexpected M4 backup path' >&2; exit 2 ;;
+    *) printf '%s\n' 'Unexpected QA backup path' >&2; exit 2 ;;
 esac
 (cd "$baseline" && shasum -a 256 -c SHA256SUMS)
 (cd "$archive" && shasum -a 256 -c SHA256SUMS)
 set -a
 source ./.env
 set +a
-project="hr-oa-m4-qa-$(openssl rand -hex 6)"
+project="hr-oa-m${milestone}-qa-$(openssl rand -hex 6)"
 export OA_RESTORE_DB_PASSWORD OA_RESTORE_DB_ROOT_PASSWORD OA_RESTORE_JWT_SECRET OA_RESTORE_API_IMAGE
 OA_RESTORE_DB_PASSWORD="$(openssl rand -hex 32)"
 OA_RESTORE_DB_ROOT_PASSWORD="$(openssl rand -hex 32)"
 OA_RESTORE_JWT_SECRET="$(openssl rand -hex 32)"
 OA_RESTORE_API_IMAGE=hr-oa-api:latest
 api_image="$(docker image inspect --format '{{.Id}}' "$OA_RESTORE_API_IMAGE")"
-[[ "$api_image" != "$(< "$archive/API_IMAGE_ID")" ]]
+if [[ "$api_image" == "$(< "$archive/API_IMAGE_ID")" ]]; then
+    printf '%s\n' 'Build the candidate API image before running isolated upgrade checks.' >&2
+    exit 2
+fi
 
 isolated() {
     docker compose --project-name "$project" -f deploy/oa/restore.compose.yaml "$@"
@@ -47,11 +56,14 @@ address="$(isolated port api 8888)"
 [[ "$address" =~ ^127\.0\.0\.1:[0-9]+$ ]]
 python3 -B tests/oa_restore_verify.py --base "http://$address" \
     --employee-state tests/results/oa-state.json --approval-state tests/results/m2/oa-m2-state.json \
-    --m3-state tests/results/m3/state.json
+    --m3-state tests/results/m3/state.json ${prior_state[@]+"${prior_state[@]}"}
 
 # If supplied, the isolated suite receives its own origin and project ID.
 if [[ $# -gt 0 ]]; then
-    export OA_M4_QA_BASE="http://$address" OA_M4_QA_PROJECT="$project"
+    export OA_QA_BASE="http://$address" OA_QA_PROJECT="$project"
+    if [[ "$milestone" == 4 ]]; then
+        export OA_M4_QA_BASE="$OA_QA_BASE" OA_M4_QA_PROJECT="$OA_QA_PROJECT"
+    fi
     if "$@"; then
         :
     else

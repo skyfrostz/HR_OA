@@ -53,6 +53,9 @@ type RequestSummary struct {
 }
 
 type RequestDetail struct {
+	LeaveCalculation *LeaveCalculation `json:"leaveCalculation"`
+	Rule             *RuleReference    `json:"rule"`
+
 	RequestSummary
 	TemplateVersion int             `json:"templateVersion"`
 	Form            json.RawMessage `json:"form" swaggertype:"object"`
@@ -78,18 +81,20 @@ type TaskView struct {
 }
 
 type ActionView struct {
-	ID           uint      `json:"id"`
-	RequestID    uint      `json:"requestId"`
-	RequestTitle string    `json:"requestTitle"`
-	RequestType  string    `json:"requestType"`
-	TaskID       *uint     `json:"taskId"`
-	ActorID      uint      `json:"actorId"`
-	ActorName    string    `json:"actorName"`
-	Action       string    `json:"action"`
-	Comment      string    `json:"comment"`
-	TargetUserID *uint     `json:"targetUserId"`
-	TargetName   *string   `json:"targetName"`
-	CreatedAt    time.Time `json:"createdAt"`
+	RouteStep          *int      `json:"routeStep,omitempty"`
+	PreviousAssigneeID *uint     `json:"previousAssigneeId,omitempty"`
+	ID                 uint      `json:"id"`
+	RequestID          uint      `json:"requestId"`
+	RequestTitle       string    `json:"requestTitle"`
+	RequestType        string    `json:"requestType"`
+	TaskID             *uint     `json:"taskId"`
+	ActorID            uint      `json:"actorId"`
+	ActorName          string    `json:"actorName"`
+	Action             string    `json:"action"`
+	Comment            string    `json:"comment"`
+	TargetUserID       *uint     `json:"targetUserId"`
+	TargetName         *string   `json:"targetName"`
+	CreatedAt          time.Time `json:"createdAt"`
 }
 
 type TransferTarget struct {

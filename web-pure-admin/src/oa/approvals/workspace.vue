@@ -1,15 +1,17 @@
 <script setup>
-import { computed, nextTick, shallowRef } from 'vue'
+import { computed, nextTick, shallowRef, watch } from 'vue'
 import { ElButton } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { useSession } from '../session'
 import { useRouteWriteLock } from '../use-route-write-lock'
+import { employeeNavigation } from '../navigation'
 import RecordList from './record-list.vue'
 import RequestDetail from './request-detail.vue'
 import RequestEditor from './request-editor.vue'
 import './workspace.css'
 
 const session = useSession()
+const navigation = employeeNavigation()
 const canSubmit = computed(() => session.account?.permissions.canSubmitRequests === true)
 const canApprove = computed(() => session.account?.permissions.canApproveRequests === true)
 const views = computed(() => [
@@ -25,6 +27,13 @@ const submitted = shallowRef(false)
 const listRevision = shallowRef(0)
 let returnFocus
 useRouteWriteLock(locked)
+watch(() => [navigation.requestId, navigation.approvalView], ([id, view]) => {
+  if (locked.value) return
+  if (view && views.value.some(item => item.id === view)) selected.value = view
+  if (id) selectedId.value = id
+  navigation.requestId = null
+  navigation.approvalView = null
+}, { immediate: true })
 
 function switchView(view) {
   if (locked.value) return

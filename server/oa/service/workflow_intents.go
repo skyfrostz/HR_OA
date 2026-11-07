@@ -50,7 +50,7 @@ func digest(value []byte) string {
 }
 
 func (s *Service) withIntent(ctx context.Context, actorID uint, route, key string, normalized any, status int,
-	authorize func(*gorm.DB) error, apply func(*gorm.DB) (model.RequestDetail, error),
+	authorize func(*gorm.DB) error, apply func(*gorm.DB) (any, error),
 ) (IntentResult, error) {
 	if !validIntentKey(key) {
 		return IntentResult{}, ErrInvalid

@@ -83,7 +83,7 @@ onUnmounted(() => document.removeEventListener('visibilitychange', refreshWhenVi
     <form class="oa-form pc-filters" @submit.prevent="apply">
       <div class="oa-fields">
         <label>申请类型<select v-model="filters.type"><option value="">全部类型</option><option v-for="(label, value) in typeLabels" :key="value" :value="value">{{ label }}</option></select></label>
-        <label>申请状态<select v-model="filters.status"><option value="">全部状态</option><option v-for="value in ['IN_REVIEW', 'APPROVED', 'REJECTED']" :key="value" :value="value">{{ statusLabels[value] }}</option></select></label>
+        <label>申请状态<select v-model="filters.status"><option value="">全部状态</option><option v-for="value in ['IN_REVIEW', 'APPROVED', 'REJECTED', 'WITHDRAWN', 'CANCELLED']" :key="value" :value="value">{{ statusLabels[value] }}</option></select></label>
         <label>开始日期<input v-model="filters.fromDate" type="date"></label>
         <label>结束日期<input v-model="filters.toDate" type="date"></label>
       </div>

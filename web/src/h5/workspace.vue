@@ -3,6 +3,8 @@ import { computed, shallowRef, watch } from 'vue'
 import { Tabbar, TabbarItem } from 'vant'
 import { Bell, CircleCheck, EditPen, List, Tickets } from '@element-plus/icons-vue'
 import { useSession } from '../oa/session'
+import Dashboard from './dashboard.vue'
+import PersonalLeave from './personal-leave.vue'
 import RecordList from './record-list.vue'
 import RequestDetail from './request-detail.vue'
 import RequestEditor from './request-editor.vue'
@@ -40,7 +42,10 @@ function requestSaved(id) {
 <template>
   <div class="h5-workspace">
     <main id="h5-content" class="h5-main" tabindex="-1">
-      <template v-if="canSubmit || canApprove">
+      <nav class="h5-shortcuts" aria-label="工作台与假期"><button type="button" :disabled="locked" :aria-pressed="selected === 'dashboard'" @click="switchView('dashboard')">工作台</button><button v-if="session.account?.user.employeeId" type="button" :disabled="locked" :aria-pressed="selected === 'balance'" @click="switchView('balance')">我的假期</button></nav>
+      <Dashboard v-if="selected === 'dashboard' && !selectedId" @view="switchView" />
+      <PersonalLeave v-else-if="selected === 'balance' && !selectedId" @open="showDetail" />
+      <template v-else-if="canSubmit || canApprove">
         <RequestEditor
           v-if="previous || (selected === 'new' && !selectedId)"
           :key="previous?.id ?? 'new'"

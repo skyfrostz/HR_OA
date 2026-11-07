@@ -59,7 +59,7 @@ func resolveRouteAssignee(db *gorm.DB, handoffs handoffMap, source, applicant ui
 	if err != nil || id == applicant || id == 0 {
 		return workflowUser{}, ErrRouteUnavailable
 	}
-	person, err := currentApprover(db, id, false)
+	person, err := currentApprover(db, id, true)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		err = ErrRouteUnavailable
 	}
@@ -170,9 +170,22 @@ func futureHandoffs(tx *gorm.DB, handoffs handoffMap, source uint, target *uint)
 		}
 		needed = needed || terminal == source
 	}
+	var rules []model.ApprovalRule
+	if err := tx.Select("steps").Where("enabled = ?", true).Find(&rules).Error; err != nil {
+		return nil, false, err
+	}
+	for _, rule := range rules {
+		for _, step := range rule.Steps {
+			terminal, err := handoffs.resolve(step.AssigneeID)
+			if err != nil {
+				return nil, false, err
+			}
+			needed = needed || terminal == source
+		}
+	}
 	var future []uint
 	var requests []model.ApprovalRequest
-	err := tx.Select("id", "applicant_id", "current_step", "route").
+	err := tx.Select("id", "applicant_id", "current_step", "route", "route_overrides").
 		Where("status = ?", model.RequestInReview).
 		FindInBatches(&requests, 100, func(_ *gorm.DB, _ int) error {
 			for _, request := range requests {
@@ -201,7 +214,7 @@ func futureHandoff(request model.ApprovalRequest, handoffs handoffMap, source ui
 		if step.Step <= *request.CurrentStep {
 			continue
 		}
-		terminal, err := handoffs.resolve(step.AssigneeID)
+		terminal, err := handoffs.resolve(effectiveRouteStep(request, step).AssigneeID)
 		if err != nil {
 			return false, err
 		}

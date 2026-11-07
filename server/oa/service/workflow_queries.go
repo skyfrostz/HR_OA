@@ -10,9 +10,13 @@ import (
 	"gorm.io/gorm"
 )
 
+func myRequestsQuery(db *gorm.DB, actor model.Actor) *gorm.DB {
+	return db.Model(&model.ApprovalRequest{}).Where("applicant_id = ?", actor.UserID)
+}
+
 func (s *Service) MyRequests(ctx context.Context, actor model.Actor, p model.Pagination, filter model.WorkflowFilter) (model.Page[model.RequestSummary], error) {
 	page := model.NewPage[model.RequestSummary](p)
-	query := s.db.WithContext(ctx).Model(&model.ApprovalRequest{}).Where("applicant_id = ?", actor.UserID)
+	query := myRequestsQuery(s.db.WithContext(ctx), actor)
 	query, err := applyWorkflowFilter(query, filter, "", "created_at")
 	if err != nil {
 		return page, err
@@ -21,7 +25,7 @@ func (s *Service) MyRequests(ctx context.Context, actor model.Actor, p model.Pag
 		return page, err
 	}
 	var requests []model.ApprovalRequest
-	if err := query.Omit("Form", "Route").Order("id DESC").Limit(p.PageSize).Offset(p.Offset()).Find(&requests).Error; err != nil {
+	if err := query.Omit("Form", "Route", "LeaveCalculation", "RuleSnapshot", "RouteOverrides").Order("id DESC").Limit(p.PageSize).Offset(p.Offset()).Find(&requests).Error; err != nil {
 		return page, err
 	}
 	for _, request := range requests {
@@ -37,7 +41,7 @@ func (s *Service) Request(ctx context.Context, actor model.Actor, id uint) (mode
 		err := tx.Where(`id = ? AND (
 			applicant_id = ?
 			OR EXISTS (SELECT 1 FROM oa_tasks AS t WHERE t.request_id = oa_requests.id AND t.assignee_id = ?)
-			OR EXISTS (SELECT 1 FROM oa_request_actions AS a WHERE a.request_id = oa_requests.id AND ((a.actor_id = ? AND a.action = ?) OR (a.previous_assignee_id = ? AND a.action = ?)))
+			OR EXISTS (SELECT 1 FROM oa_request_actions AS a WHERE a.request_id = oa_requests.id AND ((a.actor_id = ? AND a.action = ?) OR (a.previous_assignee_id = ? AND a.action = ? AND a.task_id IS NOT NULL)))
 		)`, id, actor.UserID, actor.UserID, actor.UserID, model.ActionTransfer, actor.UserID, model.ActionHandoff).Take(&request).Error
 		if err != nil {
 			return queryError(err)
@@ -48,11 +52,19 @@ func (s *Service) Request(ctx context.Context, actor model.Actor, id uint) (mode
 	return detail, err
 }
 
-func (s *Service) PendingTasks(ctx context.Context, actor model.Actor, p model.Pagination, filter model.WorkflowFilter) (model.Page[model.TaskView], error) {
-	page := model.NewPage[model.TaskView](p)
-	query := s.db.WithContext(ctx).Table("oa_tasks AS t").Joins("JOIN oa_requests AS r ON r.id = t.request_id").
+func pendingTasksQuery(db *gorm.DB, actor model.Actor) *gorm.DB {
+	query := db.Table("oa_tasks AS t").Joins("JOIN oa_requests AS r ON r.id = t.request_id").
 		Where("t.assignee_id = ? AND t.status = ? AND r.status = ? AND r.current_step = t.step",
 			actor.UserID, model.TaskPending, model.RequestInReview)
+	if !actor.CanApproveRequests() || actor.EmployeeID == nil {
+		query = query.Where("1 = 0")
+	}
+	return query
+}
+
+func (s *Service) PendingTasks(ctx context.Context, actor model.Actor, p model.Pagination, filter model.WorkflowFilter) (model.Page[model.TaskView], error) {
+	page := model.NewPage[model.TaskView](p)
+	query := pendingTasksQuery(s.db.WithContext(ctx), actor)
 	query, err := applyWorkflowFilter(query, filter, "r.", "t.created_at")
 	if err != nil {
 		return page, err
@@ -164,7 +176,12 @@ func requestSummary(request model.ApprovalRequest) model.RequestSummary {
 func requestDetail(tx *gorm.DB, request model.ApprovalRequest) (model.RequestDetail, error) {
 	detail := model.RequestDetail{
 		RequestSummary: requestSummary(request), TemplateVersion: request.TemplateVersion, Form: request.Form,
-		Tasks: []model.TaskView{}, History: []model.ActionView{},
+		LeaveCalculation: request.LeaveCalculation,
+		Tasks:            []model.TaskView{}, History: []model.ActionView{},
+	}
+	if request.RuleSnapshot != nil {
+		rule := request.RuleSnapshot
+		detail.Rule = &model.RuleReference{ID: rule.ID, Version: rule.Version, Name: rule.Name}
 	}
 	if err := json.Unmarshal(request.Route, &detail.Route); err != nil {
 		return detail, err
@@ -198,7 +215,8 @@ func taskView(task model.ApprovalTask, request model.ApprovalRequest) model.Task
 func actionView(action model.ApprovalAction, request model.ApprovalRequest) model.ActionView {
 	return model.ActionView{
 		ID: action.ID, RequestID: action.RequestID, RequestTitle: request.Title, RequestType: request.Type,
-		TaskID: action.TaskID, ActorID: action.ActorID, ActorName: action.ActorName, Action: action.Action,
+		TaskID: action.TaskID, ActorID: action.ActorID, ActorName: action.ActorName,
+		RouteStep: action.RouteStep, PreviousAssigneeID: action.PreviousAssigneeID, Action: action.Action,
 		Comment: action.Comment, TargetUserID: action.TargetUserID, TargetName: action.TargetName,
 		CreatedAt: action.CreatedAt.UTC(),
 	}

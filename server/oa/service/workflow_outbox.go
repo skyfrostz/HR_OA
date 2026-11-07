@@ -80,6 +80,8 @@ func mockBackoff(attempts uint) time.Duration {
 
 func mockTitle(kind string) string {
 	switch kind {
+	case model.TaskReminder:
+		return "申请人催办了当前待办"
 	case model.TaskAssigned:
 		return "有新的待办申请"
 	case model.RequestApproved:

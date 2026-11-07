@@ -5,20 +5,13 @@ import (
 	"time"
 
 	"github.com/flipped-aurora/gin-vue-admin/server/oa/model"
+	"gorm.io/gorm"
 )
 
 func (s *Service) ContractReminders(ctx context.Context, actor model.Actor, days int, p model.Pagination) (model.Page[model.ContractReminder], error) {
 	page := model.NewPage[model.ContractReminder](p)
 	today := calendarDate(time.Now().In(businessTime))
-	query := s.visibleContracts(ctx, actor).
-		Joins("JOIN oa_employees AS e ON e.id = oa_contracts.employee_id AND e.deleted_at IS NULL").
-		Where("oa_contracts.status IN ? AND oa_contracts.end_date <= ?", []string{"SIGNED", "EXPIRED"}, today.AddDate(0, 0, days)).
-		Where(`NOT EXISTS (
-			SELECT 1 FROM oa_contracts AS successor
-			WHERE successor.previous_contract_id = oa_contracts.id AND successor.employee_id = oa_contracts.employee_id
-			AND successor.deleted_at IS NULL
-			AND successor.status = 'SIGNED' AND successor.end_date > oa_contracts.end_date AND successor.end_date >= ?
-		)`, today)
+	query := s.contractReminderQuery(ctx, actor, days)
 	if err := query.Count(&page.Total).Error; err != nil {
 		return page, err
 	}
@@ -53,4 +46,17 @@ func calendarDate(date time.Time) time.Time {
 func calendarDaysBetween(from, to time.Time) int64 {
 	const secondsInDay = 24 * 60 * 60
 	return (calendarDate(to).Unix() - calendarDate(from).Unix()) / secondsInDay
+}
+
+func (s *Service) contractReminderQuery(ctx context.Context, actor model.Actor, days int) *gorm.DB {
+	today := calendarDate(time.Now().In(businessTime))
+	return s.visibleContracts(ctx, actor).
+		Joins("JOIN oa_employees AS e ON e.id = oa_contracts.employee_id AND e.deleted_at IS NULL").
+		Where("oa_contracts.status IN ? AND oa_contracts.end_date <= ?", []string{"SIGNED", "EXPIRED"}, today.AddDate(0, 0, days)).
+		Where(`NOT EXISTS (
+			SELECT 1 FROM oa_contracts AS successor
+			WHERE successor.previous_contract_id = oa_contracts.id AND successor.employee_id = oa_contracts.employee_id
+			AND successor.deleted_at IS NULL
+			AND successor.status = 'SIGNED' AND successor.end_date > oa_contracts.end_date AND successor.end_date >= ?
+		)`, today)
 }

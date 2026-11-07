@@ -17,7 +17,7 @@ func applyWorkflowFilter(db *gorm.DB, input model.WorkflowFilter, requestPrefix,
 	}
 	switch input.Status {
 	case "":
-	case model.RequestInReview, model.Approved, model.Rejected:
+	case model.RequestInReview, model.Approved, model.Rejected, model.Withdrawn, model.Cancelled:
 		db = db.Where(requestPrefix+"status = ?", input.Status)
 	default:
 		return nil, ErrInvalid

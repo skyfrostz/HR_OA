@@ -25,6 +25,11 @@ const (
 // Workflow tables retain submitted records and history indefinitely in M2.
 // The application exposes no update or delete operation for the snapshots.
 type ApprovalRequest struct {
+	LeaveEmployeeID  *uint             `gorm:"index"`
+	LeaveCalculation *LeaveCalculation `gorm:"serializer:json;type:json"`
+	RuleSnapshot     *ApprovalRule     `gorm:"serializer:json;type:json"`
+	RouteOverrides   map[int]RouteStep `gorm:"serializer:json;type:json"`
+
 	ID                uint            `gorm:"primaryKey"`
 	Type              string          `gorm:"size:16;not null"`
 	Title             string          `gorm:"size:100;not null"`
@@ -58,6 +63,7 @@ type ApprovalTask struct {
 func (ApprovalTask) TableName() string { return "oa_tasks" }
 
 type ApprovalAction struct {
+	RouteStep          *int
 	PreviousAssigneeID *uint
 	ID                 uint `gorm:"primaryKey"`
 	RequestID          uint `gorm:"not null;index"`

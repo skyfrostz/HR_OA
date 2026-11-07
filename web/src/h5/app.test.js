@@ -175,11 +175,13 @@ describe('mobile approval entry', () => {
   it('submits leave with a frozen intent through a network failure and an in-progress replay', async () => {
     const submitted = {
       ...detail, type: 'LEAVE', title: '演示请假',
-      form: { startDate: '2026-11-09', endDate: '2026-11-10', reason: '演示事由' }
+      form: { leaveTypeId: 1, leaveTypeVersion: 1, calendarVersion: 1, startDate: '2026-11-09', endDate: '2026-11-10', startHalf: 'AM', endHalf: 'PM', reason: '演示事由' }
     }
     let attempts = 0
     const mock = fixtureServer({
       onRequest(path) {
+        if (path === '/leave-types') return json({ list: [{ id: 1, name: '年假', usesBalance: true, enabled: true, version: 1 }] })
+        if (path === '/leave-preview') return json({ calculation: { ...submitted.form, leaveTypeName: '年假', usesBalance: true, totalHalfDays: 4, years: [{ year: 2026, halfDays: 4 }], days: [] }, balances: [], canSubmit: true, issues: [] })
         if (path === '/requests/7') return json(submitted)
         if (path !== '/requests') return
         attempts++
@@ -192,6 +194,7 @@ describe('mobile approval entry', () => {
     expect(wrapper.text()).toContain('选择一种演示表单')
     expect(wrapper.findAll('[role="tab"]').map((item) => item.text())).not.toContain('待办')
     await openRecord(wrapper, '请假申请')
+    await wrapper.get('#h5-leave-type').setValue('1')
     await wrapper.get('#h5-request-title').setValue('演示请假')
     await wrapper.get('#h5-field-startDate').setValue('2026-11-09')
     await wrapper.get('#h5-field-endDate').setValue('2026-11-08')
@@ -200,6 +203,8 @@ describe('mobile approval entry', () => {
     expect(wrapper.text()).toContain('结束日期不能早于开始日期')
     expect(attempts).toBe(0)
     await wrapper.get('#h5-field-endDate').setValue('2026-11-10')
+    await findButton(wrapper, '预览请假天数').trigger('click')
+    await flushPromises()
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(wrapper.text()).toContain('暂时无法确认提交结果')

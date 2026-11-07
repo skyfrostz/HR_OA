@@ -33,7 +33,7 @@ func (s *Service) SubmitRequest(ctx context.Context, actor model.Actor, key stri
 			applicant, err = currentSubmitter(tx, actor.UserID)
 			return err
 		},
-		func(tx *gorm.DB) (model.RequestDetail, error) {
+		func(tx *gorm.DB) (any, error) {
 			return submitRequest(tx, applicant, normalized)
 		},
 	)
@@ -52,7 +52,32 @@ func submitRequest(tx *gorm.DB, applicant workflowUser, input model.SubmitInput)
 		}
 	}
 
-	steps, err := developmentRoute(tx, applicant.ID)
+	var leave *model.LeaveCalculation
+	var employeeID *uint
+	var amount *int64
+	if input.Type == "LEAVE" {
+		var form leaveForm
+		if err := json.Unmarshal(input.Form, &form); err != nil {
+			return model.RequestDetail{}, err
+		}
+		var err error
+		leave, err = prepareLeaveSubmission(tx, applicant.EmployeeID, form)
+		if err != nil {
+			return model.RequestDetail{}, err
+		}
+		employeeID = &applicant.EmployeeID
+	} else if input.Type == "EXPENSE" {
+		var form expenseForm
+		if err := json.Unmarshal(input.Form, &form); err != nil {
+			return model.RequestDetail{}, err
+		}
+		amount = &form.AmountCents
+	}
+	var employee model.Employee
+	if err := tx.Clauses(clause.Locking{Strength: "SHARE"}).Select("department_id").Take(&employee, applicant.EmployeeID).Error; err != nil {
+		return model.RequestDetail{}, queryError(err)
+	}
+	steps, rule, err := selectApprovalRoute(tx, input.Type, employee.DepartmentID, amount, applicant.ID)
 	if err != nil {
 		return model.RequestDetail{}, err
 	}
@@ -63,11 +88,15 @@ func submitRequest(tx *gorm.DB, applicant workflowUser, input model.SubmitInput)
 	now := workflowNow()
 	firstStep := steps[0].Step
 	request := model.ApprovalRequest{
-		Type: input.Type, Title: input.Title, Status: model.RequestInReview, ApplicantID: applicant.ID,
+		Type: input.Type, Title: input.Title, Status: model.RequestInReview,
+		LeaveEmployeeID: employeeID, LeaveCalculation: leave, RuleSnapshot: rule, ApplicantID: applicant.ID,
 		ApplicantName: applicant.DisplayName, TemplateVersion: 1, Form: input.Form, Route: route,
 		PreviousRequestID: input.PreviousRequestID, CurrentStep: &firstStep, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := tx.Create(&request).Error; err != nil {
+		return model.RequestDetail{}, err
+	}
+	if err := reserveLeave(tx, request); err != nil {
 		return model.RequestDetail{}, err
 	}
 	if err := createPendingTask(tx, request.ID, steps[0], now); err != nil {
@@ -98,13 +127,13 @@ func (s *Service) ActOnTask(ctx context.Context, actor model.Actor, taskID uint,
 				return err
 			}
 			var err error
-			approver, err = currentApprover(tx, actor.UserID, false)
+			approver, err = currentApprover(tx, actor.UserID, true)
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return ErrForbidden
 			}
 			return err
 		},
-		func(tx *gorm.DB) (model.RequestDetail, error) {
+		func(tx *gorm.DB) (any, error) {
 			return actOnTask(tx, approver, taskID, normalized)
 		},
 	)
@@ -187,6 +216,9 @@ func applyTaskAction(tx *gorm.DB, request *model.ApprovalRequest, task model.App
 		taskUpdates["assignee_id"], taskUpdates["assignee_name"] = target.ID, target.DisplayName
 		return target.ID, model.TaskAssigned, nil
 	case model.ActionReject:
+		if err := applyLeaveTransition(tx, *request, model.LeaveRelease); err != nil {
+			return 0, "", err
+		}
 		taskUpdates["status"], taskUpdates["completed_at"] = model.Rejected, now
 		request.Status, request.CurrentStep = model.Rejected, nil
 		return request.ApplicantID, model.RequestRejected, nil
@@ -197,6 +229,9 @@ func applyTaskAction(tx *gorm.DB, request *model.ApprovalRequest, task model.App
 		}
 		taskUpdates["status"], taskUpdates["completed_at"] = model.Approved, now
 		if next == nil {
+			if err := applyLeaveTransition(tx, *request, model.LeaveConsume); err != nil {
+				return 0, "", err
+			}
 			request.Status, request.CurrentStep = model.Approved, nil
 			return request.ApplicantID, model.RequestApproved, nil
 		}
@@ -230,7 +265,7 @@ func nextRouteStep(request model.ApprovalRequest, current int) (*model.RouteStep
 	if current == len(steps) {
 		return nil, nil
 	}
-	next := steps[current]
+	next := effectiveRouteStep(request, steps[current])
 	if next.Step != current+1 || next.AssigneeID == 0 || next.AssigneeID == request.ApplicantID {
 		return nil, ErrRouteUnavailable
 	}
@@ -266,6 +301,9 @@ func createPendingTask(tx *gorm.DB, requestID uint, step model.RouteStep, now ti
 func recordAction(tx *gorm.DB, action model.ApprovalAction, recipient uint, kind string, now time.Time) error {
 	if err := tx.Create(&action).Error; err != nil {
 		return err
+	}
+	if kind == "" {
+		return nil
 	}
 	return tx.Create(&model.NotificationEvent{
 		ActionID: action.ID, RequestID: action.RequestID, RecipientID: recipient,

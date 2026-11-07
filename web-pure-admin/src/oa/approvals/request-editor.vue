@@ -6,6 +6,7 @@ import { useSession } from '../session'
 import { useRemote } from '../use-remote'
 import { approvalError, formFields, initialDraft, requestPayload, typeLabels } from './approval'
 import { useIntent } from './use-intent'
+import LeaveFields from './leave-fields.vue'
 import PageState from '../remote-state.vue'
 
 const props = defineProps({ previous: { type: Object, default: null } })
@@ -14,6 +15,8 @@ const session = useSession()
 const selectedType = shallowRef(props.previous?.type || '')
 const draft = ref(initialDraft(selectedType.value, props.previous))
 const validationError = shallowRef('')
+const leavePreview = shallowRef(null)
+const previewRevision = shallowRef(0)
 const heading = useTemplateRef('heading')
 const templates = useRemote((signal) => session.authorized('/request-templates', { signal }))
 const { result, loading, error: loadError, load } = templates
@@ -22,7 +25,7 @@ const available = computed(() => (result.value?.list || []).filter((item) =>
 ))
 const selected = computed(() => available.value.find((item) => item.type === selectedType.value))
 const templateIcons = { LEAVE: Calendar, EXPENSE: Wallet, GENERAL: Document }
-const fields = computed(() => formFields[selectedType.value] || [])
+const fields = computed(() => selectedType.value === 'LEAVE' ? [] : formFields[selectedType.value] || [])
 const mutation = useIntent(approvalError)
 const { busy, retryable, error } = mutation
 const locked = computed(() => busy.value || retryable.value)
@@ -50,13 +53,27 @@ async function submit() {
     validationError.value = cause.message
     return
   }
+  if (selectedType.value === 'LEAVE' && !leavePreview.value?.canSubmit) { validationError.value = '请先预览请假天数并处理余额或时段问题。'; return }
+  if (selectedType.value === 'LEAVE') Object.assign(data.form, { leaveTypeVersion: leavePreview.value.calculation.leaveTypeVersion, calendarVersion: leavePreview.value.calculation.calendarVersion })
   const detail = await mutation.submit('/requests', data)
-  if (detail) emit('saved', detail.id)
+  finishSubmission(detail)
 }
 
-async function retry() {
-  const detail = await mutation.retry()
+function acceptPreview(value) {
+  leavePreview.value = value
+  if (value?.canSubmit) { validationError.value = ''; error.value = '' }
+}
+function finishSubmission(detail) {
   if (detail) emit('saved', detail.id)
+  else if (['STALE_RECORD', 'LEAVE_OVERLAP', 'INSUFFICIENT_LEAVE'].includes(mutation.failure.value?.code)) {
+    leavePreview.value = null
+    previewRevision.value++
+    validationError.value = '配置、余额或可用时段已变化，请重新预览后再提交。'
+  }
+}
+async function retry() {
+  validationError.value = ''
+  finishSubmission(await mutation.retry())
 }
 </script>
 
@@ -98,14 +115,15 @@ async function retry() {
 
     <div v-if="selected" class="pc-card pc-block pc-editor-card">
       <h2>{{ typeLabels[selected.type] }}</h2>
-      <p v-if="selected.route.length" class="pc-route-preview">
-        {{ selected.route.map((step) => step.name).join(' → ') }}
+      <p v-if="selected.route?.length" class="pc-route-preview">
+        审批路径提示：{{ selected.route.map((step) => step.name).join(' → ') }}。金额规则在提交时确定，结果以申请保存的路径为准。
       </p>
       <form class="oa-form pc-form" autocomplete="off" @submit.prevent="submit">
         <label for="pc-request-title">
           标题
           <input id="pc-request-title" v-model="draft.title" required :disabled="locked">
         </label>
+        <LeaveFields :key="previewRevision" v-if="selectedType === 'LEAVE'" v-model="draft.form" :disabled="locked" @validated="acceptPreview" />
         <label v-for="field in fields" :key="field.name" :for="'pc-field-' + field.name">
           {{ field.label }}
           <textarea
@@ -135,7 +153,7 @@ async function retry() {
           :loading="busy"
           @click="retry"
         >重试原提交</Button>
-        <Button v-else type="primary" native-type="submit" :disabled="busy" :loading="busy">提交申请</Button>
+        <Button v-else type="primary" native-type="submit" :disabled="busy || (selectedType === 'LEAVE' && !leavePreview?.canSubmit)" :loading="busy">提交申请</Button>
       </form>
     </div>
   </section>

@@ -34,6 +34,9 @@ type AnnualLeaveInput struct {
 }
 
 type AnnualLeaveView struct {
+	ApprovalUsedHalfDays int `json:"approvalUsedHalfDays"`
+	ReservedHalfDays     int `json:"reservedHalfDays"`
+
 	ID                uint      `json:"id"`
 	EmployeeID        uint      `json:"employeeId"`
 	Year              int       `json:"year"`

@@ -10,14 +10,20 @@ export const statusLabels = {
   IN_REVIEW: '审批中',
   PENDING: '待审批',
   APPROVED: '已通过',
-  REJECTED: '已驳回'
+  REJECTED: '已驳回',
+  WITHDRAWN: '已撤回',
+  CANCELLED: '已撤销'
 }
 
 export const actionLabels = {
   SUBMIT: '发起申请',
   APPROVE: '通过',
   REJECT: '驳回',
-  TRANSFER: '转交'
+  TRANSFER: '转交',
+  HANDOFF: '交接',
+  WITHDRAW: '撤回',
+  CANCEL: '撤销请假',
+  REMIND: '催办'
 }
 
 export const formFields = {
@@ -36,7 +42,7 @@ export const formFields = {
   ]
 }
 
-const dateFormat = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' })
+const dateFormat = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Shanghai' })
 
 export function displayDate(value) {
   const timestamp = Date.parse(value)
@@ -51,6 +57,7 @@ export function initialDraft(type, previous) {
     const remainder = cents % 100
     form.amount = String((cents - remainder) / 100) + '.' + String(remainder).padStart(2, '0')
   }
+  if (type === 'LEAVE') Object.assign(form, { leaveTypeId: previous?.form.leaveTypeId || null, startHalf: previous?.form.startHalf || 'AM', endHalf: previous?.form.endHalf || 'PM' })
   return { title: previous?.title || '', form }
 }
 
@@ -83,12 +90,23 @@ export function requestPayload(type, draft, previousId) {
     throw new Error('结束日期不能早于开始日期。')
   }
 
+  if (type === 'LEAVE') {
+    if (!Number.isSafeInteger(draft.form.leaveTypeId) || draft.form.leaveTypeId < 1) throw new Error('请选择请假类型。')
+    if (!['AM', 'PM'].includes(draft.form.startHalf) || !['AM', 'PM'].includes(draft.form.endHalf)) throw new Error('请选择开始和结束时段。')
+    Object.assign(form, { leaveTypeId: draft.form.leaveTypeId, startHalf: draft.form.startHalf, endHalf: draft.form.endHalf })
+    if (form.startDate === form.endDate && form.startHalf === 'PM' && form.endHalf === 'AM') throw new Error('结束时段不能早于开始时段。')
+  }
   const payload = { type, title, form }
   if (previousId) payload.previousRequestId = previousId
   return payload
 }
 
 const actionErrorMessages = {
+  STALE_RECORD: '配置或记录已变化。请重新预览并确认后再提交。',
+  LEAVE_OVERLAP: '请假时段与已有申请重叠，请调整日期后重新预览。',
+  INSUFFICIENT_LEAVE: '年度可用余额不足，请调整日期或联系管理员核对额度。',
+  REMINDER_RATE_LIMIT: '距上次催办不足 5 分钟，请稍后再试。',
+  INVALID_STATE: '申请状态已变化，请重新读取后再操作。',
   STALE_TASK: '待办已变化。请核对重新加载的记录后再操作。',
   ROUTE_UNAVAILABLE: '当前审批路径有节点不可用，请稍后再试。',
   TRANSFER_LIMIT: '该申请已达转交次数上限。',
@@ -96,6 +114,7 @@ const actionErrorMessages = {
 }
 
 export function approvalError(cause) {
+  if (cause.errorCode === 'REMINDER_RATE_LIMIT') return { retryable: false, message: actionErrorMessages.REMINDER_RATE_LIMIT }
   if (cause.errorCode === 'IDEMPOTENCY_IN_PROGRESS') {
     return { retryable: true, message: '系统仍在处理原操作。稍后重试会继续核对同一次提交。' }
   }

@@ -41,6 +41,11 @@ def directory(page):
     return page.get_by_role("region", name="员工名册")
 
 
+def employee_landing(page):
+    page.evaluate("window.location.hash = '/employees'")
+    expect(directory(page)).to_be_visible()
+
+
 def set_theme(page, dark=True):
     button(page, "界面设置").click()
     page.locator(".right-panel").get_by_text("深色" if dark else "浅色", exact=True).click()
@@ -178,6 +183,7 @@ def cross_end(browser, base, artifacts):
 
 def organization(browser, base, state, artifacts):
     page, traffic, _ = pc_page(browser, base, "hr_admin")
+    employee_landing(page)
     table = directory(page)
     expect(table).to_be_visible()
     expect(table.get_by_role("columnheader", name="约定工资")).to_be_visible()
@@ -192,6 +198,7 @@ def organization(browser, base, state, artifacts):
     page.get_by_role("heading", name="员工档案", exact=True).click()
     button(page, "退出登录").click()
     login(page, "hr_viewer", traffic)
+    employee_landing(page)
     expect(table).to_be_visible()
     column_control.click()
     expect(page.get_by_role("checkbox", name="列展示")).to_have_count(1)
@@ -247,6 +254,7 @@ def organization(browser, base, state, artifacts):
     traffic.assert_local()
 
     phone, phone_traffic, _ = pc_page(browser, base, "employee", 390)
+    employee_landing(phone)
     expect(button(directory(phone), "查看档案")).to_have_count(1)
     expect(phone.get_by_role("heading", name="组织架构")).to_have_count(0)
     mobile = theme_shots(phone, artifacts, 390)
@@ -257,6 +265,7 @@ def organization(browser, base, state, artifacts):
 
 def lifecycle(browser, base, state, artifacts):
     page, traffic, admin = pc_page(browser, base, "hr_admin")
+    employee_landing(page)
     expect(button(directory(page), "查看档案").first).to_be_visible()
     record = call(base, f"/employees/{state['employeeId']}", admin["token"])
     open_employee(page, record["employeeNo"])
@@ -328,6 +337,7 @@ def lifecycle(browser, base, state, artifacts):
     expect(dialog).to_be_hidden()
     button(page, "退出登录").click()
     login(page, "hr_viewer", traffic)
+    employee_landing(page)
     expect(button(directory(page), "查看档案").first).to_be_visible()
     open_employee(page, record["employeeNo"])
     expect(account).to_have_count(0)
@@ -350,6 +360,7 @@ def lifecycle(browser, base, state, artifacts):
     traffic.assert_local()
     phone, phone_traffic, _ = pc_page(browser, base, "hr_admin", 390)
     set_theme(phone)
+    employee_landing(phone)
     open_employee(phone, record["employeeNo"])
     phone_dialog = phone.get_by_role("dialog")
     drawer_ratios = contrast(phone_dialog, {"field_label": ".oa-description dt", "muted": ".oa-profile-head .oa-muted",

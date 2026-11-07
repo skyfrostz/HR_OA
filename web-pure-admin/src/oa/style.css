@@ -11,7 +11,7 @@
 .oa-pure .oa-form :is(input, select), .oa-pure-login .oa-form input {
   background: var(--el-bg-color); border-color: var(--el-border-color); color: var(--el-text-color-primary);
 }
-.oa-pure :is(a, button, input, select):focus-visible, .oa-pure-login :is(a, button, input):focus-visible {
+.oa-pure :is(a, button, input, select, textarea, summary):focus-visible, .oa-pure-login :is(a, button, input):focus-visible {
   outline: 2px solid var(--el-color-primary); outline-offset: 2px;
 }
 .oa-pure .oa-table thead, .oa-pure .oa-table tbody tr:hover { background: var(--el-fill-color-light); }
@@ -267,7 +267,7 @@
 }
 
 .oa-directory-pure-table { padding-inline: .3rem; font-variant-numeric: tabular-nums; }
-.oa-directory-pure-table .el-table {
+.oa-directory-pure-table .el-table, .oa-annual-leave-table .el-table {
   --el-table-header-bg-color: var(--el-fill-color-light);
   --el-table-header-text-color: var(--el-text-color-primary);
 }
@@ -309,3 +309,18 @@
   .oa-segmented { width: 100%; }
   .oa-segmented > button { flex: 1 1 auto; padding-inline: .45rem; }
 }
+
+
+.oa-settings-tabs { margin-bottom: 1rem; }
+.oa-settings-list { list-style: none; padding: 0; margin: .75rem 0; }
+.oa-settings-list > li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .75rem; padding: .8rem 0; border-bottom: 1px solid var(--el-border-color-light); overflow-wrap: anywhere; }
+.oa-settings-list > li > div { flex: 1 1 15rem; min-width: 0; }
+.oa-weekdays { display: flex; flex-wrap: wrap; gap: .5rem; }
+.oa-weekdays label { display: flex; gap: .5rem; align-items: center; min-height: 2.75rem; padding: .4rem; }
+.oa-form .oa-weekdays input { width: 1rem; min-height: 1rem; }
+.oa-rule-steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 1rem; }
+.oa-rule-steps > li { display: grid; gap: .7rem; padding: .8rem; border: 1px solid var(--el-border-color); border-radius: .5rem; min-width: 0; }
+
+.oa-form fieldset { min-width: 0; border: 1px solid var(--el-border-color); border-radius: .5rem; padding: .5rem; }
+.oa-form legend { padding-inline: .3rem; }
+@media (max-width: 38rem) { .oa-pure .el-button { min-height: 2.75rem; } }

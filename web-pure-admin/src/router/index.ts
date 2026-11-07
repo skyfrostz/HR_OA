@@ -55,6 +55,9 @@ export const router = createRouter({
 export function resetRouter() {
   const navigation = employeeNavigation();
   navigation.employeeId = null;
+  navigation.contractId = null;
+  navigation.requestId = null;
+  navigation.approvalView = null;
   navigation.writeLocked = false;
   useMultiTagsStoreHook().handleTags("equal", []);
   usePermissionStoreHook().clearAllCachePage();

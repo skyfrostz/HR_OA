@@ -11,10 +11,12 @@ import (
 )
 
 type workflowUser struct {
-	ID          uint
-	Username    string
-	DisplayName string
-	AuthorityID uint
+	ID           uint
+	Username     string
+	DisplayName  string
+	AuthorityID  uint
+	EmployeeID   uint
+	DepartmentID *uint
 }
 
 // A live workflow identity has an enabled account and active GVA authority.
@@ -33,7 +35,8 @@ func boundWorkflowUsers(db *gorm.DB) *gorm.DB {
 
 func currentSubmitter(tx *gorm.DB, id uint) (workflowUser, error) {
 	var person workflowUser
-	err := boundWorkflowUsers(tx).Clauses(clause.Locking{Strength: "SHARE"}).
+	err := boundWorkflowUsers(tx).Select("u.id, u.username, u.nick_name AS display_name, u.authority_id, e.id AS employee_id, e.department_id").
+		Clauses(clause.Locking{Strength: "SHARE", Table: clause.Table{Name: "u"}}).
 		Where("u.id = ? AND u.authority_id IN ?", id, []uint{model.EmployeeRole, model.ApproverRole}).
 		Take(&person).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -48,7 +51,7 @@ func currentApprover(db *gorm.DB, id uint, requireBinding bool) (workflowUser, e
 	if requireBinding {
 		query = boundWorkflowUsers(db)
 	}
-	err := query.Clauses(clause.Locking{Strength: "SHARE"}).
+	err := query.Clauses(clause.Locking{Strength: "SHARE", Table: clause.Table{Name: "u"}}).
 		Where("u.id = ? AND u.authority_id = ?", id, model.ApproverRole).Take(&person).Error
 	return person, err
 }
@@ -87,18 +90,26 @@ func (s *Service) RequestTemplates(ctx context.Context, actor model.Actor) (mode
 	if !actor.CanSubmitRequests() && !actor.CanApproveRequests() {
 		return model.TemplatesView{}, ErrForbidden
 	}
-	// Approvers on the demonstration route can browse templates. A submission
-	// still rejects a route that would include the applicant.
-	steps, err := developmentRoute(s.db.WithContext(ctx), 0)
-	if err != nil {
-		return model.TemplatesView{}, err
+	result := model.TemplatesView{IntegrationMode: "mock", List: []model.RequestTemplate{
+		{Type: "LEAVE", Name: "请假申请", Version: 1, Description: "选择请假类型、日期与半天范围"},
+		{Type: "EXPENSE", Name: "报销申请", Version: 1, Description: "填写费用日期、金额和原因"},
+		{Type: "GENERAL", Name: "通用申请", Version: 1, Description: "填写申请事项"},
+	}}
+	db := s.db.WithContext(ctx)
+	var employee model.Employee
+	if actor.EmployeeID != nil {
+		if err := db.Select("department_id").Take(&employee, *actor.EmployeeID).Error; err != nil {
+			return result, queryError(err)
+		}
 	}
-	return model.TemplatesView{
-		IntegrationMode: "mock",
-		List: []model.RequestTemplate{
-			{Type: "LEAVE", Name: "请假申请", Version: 1, Description: "填写请假日期和原因", Route: steps},
-			{Type: "EXPENSE", Name: "报销申请", Version: 1, Description: "填写费用日期、金额和原因", Route: steps},
-			{Type: "GENERAL", Name: "通用申请", Version: 1, Description: "填写申请事项", Route: steps},
-		},
-	}, nil
+	for index, template := range result.List {
+		steps, _, err := selectApprovalRoute(db, template.Type, employee.DepartmentID, nil, 0)
+		if errors.Is(err, ErrRouteUnavailable) {
+			steps = []model.RouteStep{}
+		} else if err != nil {
+			return result, err
+		}
+		result.List[index].Route = steps
+	}
+	return result, nil
 }

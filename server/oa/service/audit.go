@@ -9,6 +9,12 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	auditLeaveType     = "LEAVE_TYPE"
+	auditLeaveCalendar = "LEAVE_CALENDAR"
+	auditApprovalRule  = "APPROVAL_RULE"
+)
+
 type auditFields map[string]any
 
 func auditReason(reason, fallback string) (string, error) {
@@ -62,7 +68,10 @@ func sameDepartment(a, b *uint) bool {
 
 func auditQuery(db, employees *gorm.DB, actor model.Actor, filter model.AuditFilter) *gorm.DB {
 	query := db.Model(&model.AuditEvent{})
-	if actor.AuthorityID == model.HRAdmin || actor.AuthorityID == model.HRViewer {
+	if actor.AuthorityID == model.HRAdmin {
+		query = query.Where("(employee_id IN (?) OR (employee_id IS NULL AND type IN ?))", employees,
+			[]string{model.AuditDepartment, auditLeaveType, auditLeaveCalendar, auditApprovalRule})
+	} else if actor.AuthorityID == model.HRViewer {
 		query = query.Where("(employee_id IN (?) OR (employee_id IS NULL AND type = ?))", employees, model.AuditDepartment)
 	} else {
 		query = query.Where("employee_id IN (?)", employees)
@@ -88,7 +97,7 @@ func auditQuery(db, employees *gorm.DB, actor model.Actor, filter model.AuditFil
 func (s *Service) AuditEvents(ctx context.Context, actor model.Actor, p model.Pagination, filter model.AuditFilter) (model.Page[model.AuditEvent], error) {
 	page := model.NewPage[model.AuditEvent](p)
 	switch filter.Type {
-	case "", model.AuditSalary, model.AuditDepartment, model.AuditAnnualLeave, model.AuditContract, model.AuditAccount, model.AuditEmployment:
+	case "", model.AuditSalary, model.AuditDepartment, model.AuditAnnualLeave, model.AuditContract, model.AuditAccount, model.AuditEmployment, auditLeaveType, auditLeaveCalendar, auditApprovalRule:
 	default:
 		return page, ErrInvalid
 	}

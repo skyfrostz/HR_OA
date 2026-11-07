@@ -4,6 +4,10 @@ import Department from "~icons/ri/organization-chart";
 import Excel from "~icons/ri/file-excel-2-line";
 import Reminder from "~icons/ri/calendar-event-line";
 import Approval from "~icons/ri/task-line";
+import Dashboard from "~icons/ri/dashboard-line";
+import Settings from "~icons/ri/settings-3-line";
+import Leave from "~icons/ri/calendar-check-line";
+import Alert from "~icons/ri/error-warning-line";
 import Mobile from "~icons/ri/smartphone-line";
 
 export default {
@@ -13,6 +17,7 @@ export default {
   redirect: "/employees",
   meta: { title: "人事管理", rank: 0 },
   children: [
+    { path: "/dashboard", name: "OaDashboard", component: () => import("@/oa/dashboard.vue"), meta: { title: "工作台", icon: Dashboard, rank: 0 } },
     {
       path: "/employees",
       name: "OaEmployees",
@@ -48,6 +53,10 @@ export default {
       name: "OaMobileApprovals",
       component: () => import("@/oa/mobile-approvals.vue"),
       meta: { title: "移动审批入口", icon: Mobile, rank: 6 }
-    }
+    },
+    { path: "/my-leave", name: "OaMyLeave", component: () => import("@/oa/personal-leave.vue"), meta: { title: "我的假期", icon: Leave, rank: 7 } },
+    { path: "/workflow-settings", name: "OaWorkflowSettings", component: () => import("@/oa/workflow-settings.vue"), meta: { title: "请假与审批配置", icon: Settings, roles: ["HR_ADMIN"], rank: 8 } },
+    { path: "/approved-leaves", name: "OaApprovedLeaves", component: () => import("@/oa/approved-leaves.vue"), meta: { title: "已批请假", icon: Leave, roles: ["HR_ADMIN"], rank: 9 } },
+    { path: "/workflow-exceptions", name: "OaWorkflowExceptions", component: () => import("@/oa/workflow-exceptions.vue"), meta: { title: "审批异常", icon: Alert, roles: ["HR_ADMIN"], rank: 10 } },
   ]
 } satisfies RouteRecordRaw;

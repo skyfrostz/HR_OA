@@ -33,10 +33,32 @@ func migrate(db *gorm.DB) error {
 		&model.ApprovalRequest{}, &model.ApprovalTask{}, &model.ApprovalAction{},
 		&model.WorkflowIntent{}, &model.NotificationEvent{}, &model.MockNotification{},
 		&model.AuditEvent{}, &model.AccountSession{}, &model.WorkflowGuard{}, &model.ApprovalHandoff{},
+		&model.LeaveType{}, &model.LeaveCalendar{}, &model.LeaveLedger{}, &model.LeaveSlot{}, &model.ApprovalRule{},
 	); err != nil {
 		return err
 	}
-	return db.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.WorkflowGuard{ID: 1}).Error
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.WorkflowGuard{ID: 1}).Error; err != nil {
+			return err
+		}
+		var guard model.WorkflowGuard
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Take(&guard, 1).Error; err != nil {
+			return err
+		}
+		var calendar model.LeaveCalendar
+		if err := tx.Where("id = ?", 1).Attrs(model.LeaveCalendar{ID: 1, Version: 1, WorkingWeekdays: []int{1, 2, 3, 4, 5}, Exceptions: []model.CalendarException{}}).FirstOrCreate(&calendar).Error; err != nil {
+			return err
+		}
+		for _, kind := range []model.LeaveType{
+			{ID: 1, Name: "年假", UsesBalance: true, Enabled: true, Version: 1},
+			{ID: 2, Name: "事假", Enabled: true, Version: 1},
+		} {
+			if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&kind).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func seed(db *gorm.DB, password string) error {

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, shallowRef, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onMounted, shallowRef, useTemplateRef, watch } from 'vue'
 import { Button, Tag } from 'vant'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { formatSalary } from '../oa/format'
@@ -8,6 +8,7 @@ import { useRemote } from '../oa/use-remote'
 import { actionLabels, displayDate, formFields, statusLabels, statusTone, typeLabels } from './approval'
 import PageState from './page-state.vue'
 import TaskActions from './task-actions.vue'
+import RequestActions from './request-actions.vue'
 
 const props = defineProps({ requestId: { type: Number, required: true } })
 const emit = defineEmits(['back', 'open', 'resubmit', 'locked'])
@@ -30,6 +31,7 @@ const canResubmit = computed(() =>
   request.value?.status === 'REJECTED' &&
   request.value.applicantId === session.account.user.id
 )
+const ownOperations = computed(() => request.value?.status === 'IN_REVIEW' && request.value.applicantId === session.account?.user.id ? ['WITHDRAW', 'REMIND'] : [])
 const activeTask = computed(() => {
   if (!session.account?.permissions.canApproveRequests || request.value?.status !== 'IN_REVIEW') return null
   return request.value.tasks.find((task) => task.status === 'PENDING' && task.assigneeId === session.account.user.id)
@@ -43,11 +45,13 @@ function setLocked(value) {
 async function refreshAfterAction(action) {
   feedback.value = { message: '已记录「' + actionLabels[action] + '」。', error: false }
   await load()
+  void nextTick(() => heading.value?.focus())
 }
 
 async function refreshAfterConflict(message) {
   feedback.value = { message, error: true }
   await load()
+  void nextTick(() => heading.value?.focus())
 }
 
 watch(() => props.requestId, load, { immediate: true })
@@ -84,6 +88,15 @@ onMounted(() => heading.value.focus())
             <dd>{{ item.value }}</dd>
           </div>
         </dl>
+        <section v-if="request.type === 'LEAVE'" class="h5-block" aria-label="请假计算记录">
+          <template v-if="request.leaveCalculation">
+            <h3>{{ request.leaveCalculation.leaveTypeName }} · {{ request.leaveCalculation.totalHalfDays / 2 }} 天</h3>
+            <p class="h5-muted">{{ request.leaveCalculation.usesBalance ? '按保存的工作日历与类型计算，关联年度余额流水。' : '不扣年度余额。' }}</p>
+            <p>{{ request.leaveCalculation.startDate }} {{ request.leaveCalculation.startHalf === 'AM' ? '上午' : '下午' }} 至 {{ request.leaveCalculation.endDate }} {{ request.leaveCalculation.endHalf === 'AM' ? '上午' : '下午' }}</p>
+            <ul class="h5-history"><li v-for="year in request.leaveCalculation.years" :key="year.year">{{ year.year }} 年 · {{ year.halfDays / 2 }} 天</li></ul>
+          </template>
+          <p v-else class="h5-muted">旧版请假记录 · 不追溯扣减新余额；重新提交需选择请假类型与半天时段。</p>
+        </section>
         <div v-if="request.previousRequestId || canResubmit" class="h5-actions h5-block">
           <Button
             v-if="request.previousRequestId"
@@ -96,6 +109,7 @@ onMounted(() => heading.value.focus())
         </div>
       </section>
 
+      <RequestActions :request-id="request.id" :operations="ownOperations" @locked="setLocked" @changed="refreshAfterAction" @invalidated="refreshAfterConflict" />
       <TaskActions
         v-if="activeTask"
         :key="activeTask.id + '-' + activeTask.version"
@@ -108,6 +122,7 @@ onMounted(() => heading.value.focus())
       <section class="h5-card h5-block" aria-labelledby="request-route">
         <h2 id="request-route">审批路径</h2>
         <p class="h5-muted">提交时保存的审批路径</p>
+        <p v-if="request.rule" class="h5-meta">{{ request.rule.name }} · 版本 {{ request.rule.version }}</p>
         <ol class="h5-timeline">
           <li v-for="step in request.route" :key="step.step" :class="{ 'is-current': request.currentStep === step.step }">
             <p><strong>{{ step.step }}. {{ step.name }}</strong> · {{ step.assigneeName }}</p>
@@ -126,8 +141,9 @@ onMounted(() => heading.value.focus())
         <p v-if="!request.history.length" class="h5-muted">暂无操作记录。</p>
         <ol v-else class="h5-timeline">
           <li v-for="entry in request.history" :key="entry.id">
-            <p><strong>{{ entry.actorName }} · {{ actionLabels[entry.action] }}</strong></p>
-            <p v-if="entry.targetName">转交给 {{ entry.targetName }}</p>
+            <p><strong>{{ entry.actorName }} · {{ actionLabels[entry.action] }}<span v-if="entry.routeStep"> · {{ entry.taskId === null && entry.action === 'HANDOFF' ? '后续第' : '第' }} {{ entry.routeStep }} 步</span></strong></p>
+            <p v-if="entry.previousAssigneeId">原账号 #{{ entry.previousAssigneeId }} → {{ entry.targetName || ('账号 #' + entry.targetUserId) }}</p>
+            <p v-else-if="entry.targetName">{{ entry.action === 'HANDOFF' ? '交接给' : '转交给' }} {{ entry.targetName }}</p>
             <p v-if="entry.comment" class="h5-comment">{{ entry.comment }}</p>
             <time class="h5-time" :datetime="entry.createdAt">{{ displayDate(entry.createdAt) }}</time>
           </li>

@@ -11,9 +11,10 @@ import (
 )
 
 type leaveForm struct {
-	StartDate string `json:"startDate"`
-	EndDate   string `json:"endDate"`
-	Reason    string `json:"reason"`
+	model.LeavePeriod
+	LeaveTypeVersion int    `json:"leaveTypeVersion,omitempty"`
+	CalendarVersion  int    `json:"calendarVersion,omitempty"`
+	Reason           string `json:"reason"`
 }
 
 type expenseForm struct {

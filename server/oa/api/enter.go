@@ -70,6 +70,14 @@ func fail(c *gin.Context, err error) {
 		Fail(c, http.StatusConflict, "HANDOFF_REQUIRED", "请指定审批交接人")
 	case errors.Is(err, service.ErrHandoffConflict):
 		Fail(c, http.StatusConflict, "HANDOFF_CONFLICT", "交接人不可用或与申请冲突")
+	case errors.Is(err, service.ErrLeaveOverlap):
+		Fail(c, http.StatusConflict, "LEAVE_OVERLAP", "请假时间与已有申请重叠")
+	case errors.Is(err, service.ErrInsufficientLeave):
+		Fail(c, http.StatusConflict, "INSUFFICIENT_LEAVE", "年度可用额度不足")
+	case errors.Is(err, service.ErrRuleConflict):
+		Fail(c, http.StatusConflict, "RULE_CONFLICT", "审批规则与同优先级规则重叠")
+	case errors.Is(err, service.ErrReminderRateLimit):
+		Fail(c, http.StatusTooManyRequests, "REMINDER_RATE_LIMIT", "请间隔五分钟再催办")
 	case errors.Is(err, service.ErrImportInvalid):
 		Fail(c, http.StatusConflict, "IMPORT_INVALID", "预览含错误或没有可导入数据")
 	case errors.Is(err, service.ErrImportConflict):
