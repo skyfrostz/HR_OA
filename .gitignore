@@ -1,0 +1,60 @@
+# Modified for HR OA on 2026-11-06/07: exclude local secrets/data/builds and retain pinned Pure source.
+/web/node_modules
+/web/dist
+
+.DS_Store
+
+# local env files
+.env.local
+.env.*.local
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+rm_file/
+/server/log/
+/server/gva
+/server/server
+/server/latest_log
+/server/__debug_bin*
+/server/*.local.yaml
+server/uploads/
+
+*.iml
+web/.pnpm-debug.log
+web/pnpm-lock.yaml
+
+# binary files
+*.exe
+
+# SQLite database files
+*.db
+*.sqlite
+*.sqlite3
+worktrees/
+
+# HR OA local development additions
+.env
+private/
+.local/
+web/dist-oa/
+tests/results/
+
+# Pure Admin's checked-in Vite defaults contain public build settings only.
+!/web-pure-admin/.env
+!/web-pure-admin/.vscode/
+!/web-pure-admin/.vscode/**
+/web-pure-admin/node_modules/
+/web-pure-admin/dist/
+/web-pure-admin/coverage/

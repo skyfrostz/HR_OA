@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/pure-admin/vue-pure-admin",
+  "tag": "v7.0.0",
+  "commit": "b8177a202dceb1412d3bf56f3d15483dc1606c9c",
+  "license": "MIT",
+  "import_path": "web-pure-admin",
+  "upstream_file_count": 636,
+  "import_date": "2026-11-07"
+}

@@ -1,0 +1,17 @@
+.git
+**/.env
+**/.env.*
+**/.npmrc
+**/node_modules
+**/.pnpm-store
+**/.vite
+**/private
+**/.local
+**/uploads
+**/dist
+**/dist-oa
+**/*.pem
+**/*.key
+**/coverage
+tests
+**/.DS_Store

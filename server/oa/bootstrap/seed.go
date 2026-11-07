@@ -1,0 +1,133 @@
+package bootstrap
+
+import (
+	"errors"
+	"time"
+
+	system "github.com/flipped-aurora/gin-vue-admin/server/model/system"
+	"github.com/flipped-aurora/gin-vue-admin/server/oa/model"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
+
+// Match GVA's join table and preserve its composite key without migrating
+// unrelated menus, permissions or upstream application tables.
+type userAuthority struct {
+	SysUserID      uint `gorm:"column:sys_user_id;primaryKey;autoIncrement:false"`
+	SysAuthorityID uint `gorm:"column:sys_authority_authority_id;primaryKey;autoIncrement:false"`
+}
+
+func (userAuthority) TableName() string { return "sys_user_authority" }
+
+func migrate(db *gorm.DB) error {
+	identity := db.Session(&gorm.Session{NewDB: true})
+	identity.Config.IgnoreRelationshipsWhenMigrating = true
+	if err := identity.AutoMigrate(&system.SysAuthority{}, &system.SysUser{}, &userAuthority{}); err != nil {
+		return err
+	}
+	return db.AutoMigrate(
+		&model.Department{}, &model.Employee{}, &model.Contract{}, &model.ContractFile{},
+		&model.AnnualLeave{}, &model.EmployeeImport{},
+		&model.ApprovalRequest{}, &model.ApprovalTask{}, &model.ApprovalAction{},
+		&model.WorkflowIntent{}, &model.NotificationEvent{}, &model.MockNotification{},
+	)
+}
+
+func seed(db *gorm.DB, password string) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		for _, id := range []uint{model.HRAdmin, model.HRViewer, model.EmployeeRole, model.ApproverRole} {
+			role := system.SysAuthority{AuthorityId: id, AuthorityName: model.RoleName(id)}
+			if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&role).Error; err != nil {
+				return err
+			}
+			var persisted system.SysAuthority
+			err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Take(&persisted, "authority_id = ?", id).Error
+			if err != nil {
+				return err
+			}
+			if persisted.DeletedAt != nil || persisted.AuthorityName != role.AuthorityName {
+				return errors.New("development authority conflicts with existing identity")
+			}
+		}
+
+		for _, account := range []struct {
+			username, displayName, employeeNo string
+			authorityID                       uint
+		}{
+			{"hr_admin", "演示人事管理员", "", model.HRAdmin},
+			{"hr_viewer", "演示人事查看员", "", model.HRViewer},
+			{"employee", "演示员工甲", "OA-DEMO-001", model.EmployeeRole},
+			{"manager", "演示部门负责人", "OA-DEMO-003", model.ApproverRole},
+			{"finance", "演示复核员", "OA-DEMO-004", model.ApproverRole},
+			{"delegate", "演示转交审批人", "OA-DEMO-005", model.ApproverRole},
+		} {
+			id, err := seedAccount(tx, account.username, account.displayName, account.authorityID, password)
+			if err != nil {
+				return err
+			}
+			if account.employeeNo != "" {
+				if err := seedEmployee(tx, account.employeeNo, account.displayName, &id); err != nil {
+					return err
+				}
+			}
+			if account.authorityID == model.EmployeeRole {
+				if err := seedEmployee(tx, "OA-DEMO-002", "演示员工乙", nil); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+}
+
+func seedAccount(tx *gorm.DB, username, displayName string, authorityID uint, password string) (uint, error) {
+	id := uuid.NewSHA1(uuid.NameSpaceOID, []byte("hr-oa-local-development:"+username))
+	var user system.SysUser
+	err := tx.Unscoped().Take(&user, "username = ?", username).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			return 0, err
+		}
+		user = system.SysUser{UUID: id, Username: username, NickName: displayName, Password: string(hash), AuthorityId: authorityID, Enable: 1}
+		if err := tx.Create(&user).Error; err != nil {
+			return 0, err
+		}
+		membership := userAuthority{SysUserID: user.ID, SysAuthorityID: authorityID}
+		if err := tx.Create(&membership).Error; err != nil {
+			return 0, err
+		}
+	} else if err != nil {
+		return 0, err
+	} else if user.UUID != id {
+		return 0, errors.New("development username conflicts with existing identity")
+	}
+	return user.ID, nil
+}
+
+func seedEmployee(tx *gorm.DB, number, name string, userID *uint) error {
+	if userID != nil {
+		var bound model.Employee
+		err := tx.Unscoped().Select("id").Take(&bound, "user_id = ?", *userID).Error
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+	}
+
+	var employee model.Employee
+	err := tx.Unscoped().Select("id").Take(&employee, "employee_no = ?", number).Error
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		if err == nil && userID != nil {
+			return errors.New("development employee number conflicts with existing employee")
+		}
+		return err
+	}
+	return tx.Create(&model.Employee{
+		UserID: userID, EmployeeNo: number, Name: name, Department: "演示部门", SalaryCents: 600000,
+		BirthDate: time.Date(1995, 5, 1, 0, 0, 0, 0, time.UTC),
+		HireDate:  time.Date(2023, 6, 1, 0, 0, 0, 0, time.UTC),
+	}).Error
+}

@@ -1,0 +1,60 @@
+# HR OA local development only. Credentials are generated in ignored .env.
+name: hr-oa
+services:
+  mysql:
+    image: mysql:8.4.8
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: hr_oa
+      MYSQL_USER: hr_oa
+      MYSQL_PASSWORD: ${OA_DB_PASSWORD:?Generate .env first}
+      MYSQL_ROOT_PASSWORD: ${OA_DB_ROOT_PASSWORD:?Generate .env first}
+    ports:
+      - "127.0.0.1:13306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysql --protocol=TCP -h 127.0.0.1 -u $$MYSQL_USER -D $$MYSQL_DATABASE -e 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 30s
+  api:
+    build:
+      context: .
+      target: api
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      OA_ADDR: 0.0.0.0:8888
+      OA_MYSQL_DSN: "hr_oa:${OA_DB_PASSWORD:?Generate .env first}@tcp(mysql:3306)/hr_oa?charset=utf8mb4&parseTime=true&loc=UTC"
+      OA_STORAGE_DIR: /var/lib/oa/private
+      OA_JWT_SECRET: ${OA_JWT_SECRET:?Generate .env first}
+      OA_DEV_SEED: "true"
+      OA_MOCK_NOTIFY_FAIL: "${OA_MOCK_NOTIFY_FAIL:-false}"
+      OA_SEED_PASSWORD: ${OA_SEED_PASSWORD:?Generate .env first}
+    volumes:
+      - private-files:/var/lib/oa
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8888/api/oa/v1/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  web:
+    build:
+      context: .
+      target: web
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/oa.html && wget -q -O /dev/null http://127.0.0.1:8080/h5.html && wget -q -O /dev/null http://127.0.0.1:8080/api/oa/v1/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+volumes:
+  mysql-data:
+  private-files:

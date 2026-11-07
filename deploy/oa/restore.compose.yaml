@@ -1,0 +1,36 @@
+# Isolated local restore check. Do not run this against the live project name.
+services:
+  mysql:
+    image: mysql:8.4.8
+    environment:
+      MYSQL_DATABASE: hr_oa_restore
+      MYSQL_USER: hr_oa_restore
+      MYSQL_PASSWORD: ${OA_RESTORE_DB_PASSWORD:?Run oa-backup.sh restore}
+      MYSQL_ROOT_PASSWORD: ${OA_RESTORE_DB_ROOT_PASSWORD:?Run oa-backup.sh restore}
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysql --protocol=TCP -h 127.0.0.1 -u $$MYSQL_USER -D $$MYSQL_DATABASE -e 'SELECT 1' >/dev/null 2>&1"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+  api:
+    image: ${OA_RESTORE_API_IMAGE:?Run oa-backup.sh restore}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      OA_ADDR: 0.0.0.0:8888
+      OA_MYSQL_DSN: "hr_oa_restore:${OA_RESTORE_DB_PASSWORD:?Run oa-backup.sh restore}@tcp(mysql:3306)/hr_oa_restore?charset=utf8mb4&parseTime=true&loc=UTC"
+      OA_STORAGE_DIR: /var/lib/oa/private
+      OA_JWT_SECRET: ${OA_RESTORE_JWT_SECRET:?Run oa-backup.sh restore}
+      OA_DEV_SEED: "false"
+      OA_MOCK_NOTIFY_FAIL: "true"
+    ports:
+      - "127.0.0.1::8888"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8888/api/oa/v1/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 15

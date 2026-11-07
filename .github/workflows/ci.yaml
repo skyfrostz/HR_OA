@@ -1,0 +1,59 @@
+# Modified for HR OA on 2026-11-07. Original preserved in docs/upstream/gin-vue-admin-ci.yaml.
+name: HR OA CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hr-oa-ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.4'
+          cache-dependency-path: server/go.sum
+      - run: go test -mod=readonly -race ./oa/...
+      - run: go build -mod=readonly -o /tmp/hr-oa ./cmd/oa
+  pure-admin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web-pure-admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+      - run: npx --yes pnpm@10.32.1 install --frozen-lockfile --ignore-scripts
+      - run: npx --yes pnpm@10.32.1 run test
+      - run: npx --yes pnpm@10.32.1 run typecheck
+      - run: npx --yes pnpm@10.32.1 run build
+  h5:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:oa
+      - run: npm run build:oa

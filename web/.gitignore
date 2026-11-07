@@ -1,0 +1,5 @@
+# Modified by HR OA on 2026-11-06 and 2026-11-07 to keep package-lock.json versioned for reproducible OA builds.
+node_modules/*
+yarn.lock
+bun.lockb
+config.yaml

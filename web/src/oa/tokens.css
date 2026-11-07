@@ -1,0 +1,10 @@
+:root {
+  --oa-primary: #3563e9;
+  --oa-primary-hover: #264ec6;
+  --oa-tint: #edf2ff;
+  --oa-text: #182238;
+  --oa-muted: #667085;
+  --oa-canvas: #f5f7fb;
+  --oa-line: #e7ebf2;
+  --oa-font: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
