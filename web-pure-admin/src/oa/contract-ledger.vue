@@ -1,280 +1,200 @@
 <script setup>
-import { computed, nextTick, shallowRef, useTemplateRef, watch } from "vue";
+import {
+  computed,
+  nextTick,
+  onScopeDispose,
+  shallowRef,
+  useTemplateRef,
+  watch
+} from "vue";
 import { ElButton, ElTag } from "element-plus";
 import { listPage } from "./api";
-import { findAcrossPages } from "./business";
 import { contractStatuses } from "./format";
 import { useSession } from "./session";
 import { useRemote } from "./use-remote";
-import AttachmentClassification from "./attachment-classification.vue";
-import AttachmentForm from "./attachment-form.vue";
+import { findCreatedContract } from "./use-contract-record";
+import ContractDetail from "./contract-detail.vue";
 import ContractFiles from "./contract-files.vue";
 import ContractForm from "./contract-form.vue";
-import AuditHistory from "./audit-history.vue";
 import PageNav from "./page-nav.vue";
 import RemoteState from "./remote-state.vue";
 
 const props = defineProps({
   employeeId: { type: Number, required: true },
   contractId: Number,
+  active: { type: Boolean, default: true },
   unavailable: Boolean
 });
 const emit = defineEmits(["editing", "changed"]);
 const session = useSession();
-const focusedHeading = useTemplateRef("focusedHeading");
+const detail = useTemplateRef("detail");
+const heading = useTemplateRef("heading");
+const selectedPanel = useTemplateRef("selectedPanel");
+let selectionRevision = 0;
 const page = shallowRef(1);
-const edit = shallowRef(null);
-let returnFocus;
-const feedback = shallowRef("");
+const creating = shallowRef(false);
+const detailEditing = shallowRef(false);
 const selected = shallowRef(props.contractId || null);
-const revision = shallowRef(0);
-const path = "/employees/" + props.employeeId + "/contracts";
-const list = useRemote(signal =>
-  session.authorized(listPage(path, page.value), { signal })
+const queuedTask = shallowRef(null);
+const feedback = shallowRef("");
+let returnFocus;
+const controller = new AbortController();
+onScopeDispose(() => controller.abort());
+const path = computed(() => "/employees/" + props.employeeId + "/contracts");
+const { result, loading, error, load } = useRemote(signal =>
+  session.authorized(listPage(path.value, page.value), { signal })
 );
-const detail = useRemote(async signal => {
-  const contract = await session.authorized("/contracts/" + selected.value, {
-    signal
-  });
-  if (contract.employeeId !== props.employeeId)
-    throw new Error("这份合同不属于当前员工。");
-  return contract;
-});
-const { result, loading, error, load } = list;
-const detailRow = computed(() =>
-  detail.result.value?.id === selected.value ? detail.result.value : null
-);
-
-watch(page, load, { immediate: true });
+const editing = computed(() => creating.value || detailEditing.value);
+watch(editing, value => emit("editing", value), { flush: "sync" });
+watch([page, () => props.employeeId], load, { immediate: true });
 watch(
-  selected,
-  async id => {
-    if (!id) return;
-    await detail.load();
-    await nextTick();
-    focusedHeading.value?.focus();
-    focusedHeading.value?.scrollIntoView?.({ block: "nearest" });
+  () => props.contractId,
+  id => {
+    if (id && !editing.value) {
+      selectionRevision++;
+      queuedTask.value = null;
+      selected.value = id;
+    }
+  }
+);
+watch(
+  () => [props.active, props.employeeId],
+  () => {
+    selectionRevision++;
   },
-  { immediate: true }
+  { flush: "sync" }
 );
 
-function startEdit(kind, contract = null, file = null) {
-  if (edit.value || props.unavailable || !session.canWrite) return;
+async function select(id) {
+  if (editing.value || props.unavailable || !props.active) return;
+  const current = ++selectionRevision;
+  queuedTask.value = null;
+  selected.value = id;
+  await nextTick();
+  if (
+    current !== selectionRevision ||
+    selected.value !== id ||
+    !props.active ||
+    props.unavailable
+  )
+    return;
+  selectedPanel.value?.focus({ preventScroll: true });
+  selectedPanel.value?.scrollIntoView?.({ block: "nearest" });
+}
+function startTask(kind, contract = null, file = null) {
+  if (editing.value || props.unavailable || !session.canWrite) return;
   feedback.value = "";
   returnFocus = document.activeElement;
-  edit.value = { kind, contract, file };
-  emit("editing", true);
+  if (kind === "create") {
+    creating.value = true;
+    return;
+  }
+  if (selected.value === contract.id && detail.value?.startTask(kind, file))
+    return;
+  queuedTask.value = { contractId: contract.id, kind, file };
+  selected.value = contract.id;
 }
-function stopEdit() {
-  edit.value = null;
-  emit("editing", false);
+function detailLoaded(contract) {
+  const task = queuedTask.value;
+  if (task?.contractId !== contract.id) return;
+  queuedTask.value = null;
+  detail.value?.startTask(task.kind, task.file);
+}
+function stopCreate() {
+  creating.value = false;
   void nextTick(() => {
-    if (returnFocus?.isConnected) returnFocus.focus();
-    else focusedHeading.value?.focus();
+    if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
+    else heading.value?.focus({ preventScroll: true });
   });
 }
-
-async function refreshRecords(contractNo = "") {
-  const checks = [load()];
-  if (selected.value) checks.push(detail.load());
-  if (edit.value?.contract && edit.value.contract.id !== selected.value) {
-    const id = edit.value.contract.id;
-    checks.push(
-      session.authorized("/contracts/" + id).then(
-        () => true,
-        () => false
-      )
-    );
+async function closeSelected() {
+  if (await detail.value?.requestClose()) {
+    selectionRevision++;
+    detail.value?.cancelPending();
+    selected.value = null;
+    queuedTask.value = null;
   }
-  let matched;
-  if (contractNo) {
-    checks.push(
-      findAcrossPages(
-        current =>
-          session.authorized(path + "?page=" + current + "&pageSize=100"),
-        record => record.contractNo === contractNo
-      ).then(
-        row => {
-          matched = row;
-          return true;
-        },
-        () => false
-      )
-    );
-  }
-  const refreshed = (await Promise.all(checks)).every(Boolean);
-  if (refreshed && matched) selected.value = matched.id;
-  if (!refreshed) feedback.value = "未能核对合同，请重新读取。";
-  return refreshed;
 }
-
-async function saved(contract, message) {
-  stopEdit();
+async function refreshCreation(contractNo = "", intent) {
+  if (contractNo && intent?.kind === "create" && intent.blocked === "unknown") {
+    return findCreatedContract(
+      session.authorized,
+      {
+        employeeId: props.employeeId,
+        contractNo,
+        ...intent.expected
+      },
+      controller.signal
+    );
+  }
+  return load();
+}
+async function created(contract, message) {
+  stopCreate();
   feedback.value = message;
-  revision.value++;
+  if (contract?.id) selected.value = contract.id;
   emit("changed");
-  if (contract?.id && selected.value !== contract.id)
-    selected.value = contract.id;
-  else if (selected.value) void detail.load();
   if (page.value === 1) await load();
   else page.value = 1;
 }
-
-function reconciled() {
-  stopEdit();
-  revision.value++;
-  emit("changed");
-  feedback.value =
-    "已重新读取合同，请核对当前状态及变更历史，再决定是否需要操作。";
+function creationReconciled() {
+  stopCreate();
+  feedback.value = "已重新读取，请核对现有合同后再操作。";
+}
+function detailChanged(change) {
+  emit("changed", change);
+  void load();
 }
 </script>
 
 <template>
   <section class="oa-surface" aria-labelledby="contracts-heading">
-    <div v-if="!edit" class="oa-section-head">
+    <div v-if="!editing" class="oa-section-head">
       <div>
-        <h2 id="contracts-heading">劳动合同</h2>
+        <h2 id="contracts-heading" ref="heading" tabindex="-1">劳动合同</h2>
         <p class="oa-muted">查看合同期限、续约关系和私有附件。</p>
       </div>
       <ElButton
         v-if="session.canWrite"
         type="primary"
-        :disabled="Boolean(edit) || unavailable"
-        @click="startEdit('create')"
+        :disabled="unavailable"
+        @click="startTask('create')"
         >新建合同</ElButton
       >
     </div>
     <ContractForm
-      v-if="edit && !['attachment', 'classification'].includes(edit.kind)"
+      v-if="creating"
       :path="path"
-      :kind="edit.kind"
-      :contract="edit.contract"
-      :refresh="refreshRecords"
-      @cancel="stopEdit"
-      @saved="saved"
-      @reconciled="reconciled"
+      kind="create"
+      :refresh="refreshCreation"
+      @cancel="stopCreate"
+      @saved="created"
+      @reconciled="creationReconciled"
     />
     <p v-if="feedback" class="oa-status" role="status">{{ feedback }}</p>
-
-    <section
-      v-show="!edit"
-      v-if="selected"
-      class="oa-contract oa-contract-spotlight"
-      aria-labelledby="oa-focused-contract"
+    <div
+      v-if="selected && !creating"
+      ref="selectedPanel"
+      class="oa-selected-contract"
+      tabindex="-1"
     >
-      <header class="oa-section-head">
-        <div>
-          <p class="oa-muted">合同详情</p>
-          <h3 id="oa-focused-contract" ref="focusedHeading" tabindex="-1">
-            {{ detailRow?.contractNo || "查看合同" }}
-          </h3>
-        </div>
-        <ElButton
-          :disabled="Boolean(edit) || unavailable"
-          @click="selected = null"
+      <div v-if="!detailEditing" class="oa-actions oa-close-contract">
+        <ElButton :disabled="unavailable" @click="closeSelected"
           >关闭合同详情</ElButton
         >
-      </header>
-      <RemoteState
-        :loading="detail.loading.value"
-        :error="detail.error.value"
-        @retry="detail.load"
+      </div>
+      <ContractDetail
+        ref="detail"
+        :contract-id="selected"
+        :expected-employee-id="employeeId"
+        :active="active && !unavailable"
+        @select="select"
+        @editing="detailEditing = $event"
+        @changed="detailChanged"
+        @loaded="detailLoaded"
       />
-      <template v-if="detailRow">
-        <div class="oa-contract-summary">
-          <ElTag
-            :type="contractStatuses[detailRow.status]?.type"
-            effect="plain"
-            >{{ contractStatuses[detailRow.status]?.label }}</ElTag
-          >
-          <span>{{ detailRow.startDate }} 至 {{ detailRow.endDate }}</span>
-          <span v-if="detailRow.version" class="oa-muted"
-            >版本 {{ detailRow.version }}</span
-          >
-        </div>
-        <dl class="oa-description oa-account-summary">
-          <div>
-            <dt>签署日期</dt>
-            <dd>{{ detailRow.signedDate || "未登记" }}</dd>
-          </div>
-          <div>
-            <dt>终止日期</dt>
-            <dd>{{ detailRow.terminatedDate || "未登记" }}</dd>
-          </div>
-          <div v-if="detailRow.previousContractId">
-            <dt>续约来源</dt>
-            <dd>
-              <ElButton
-                text
-                type="primary"
-                :disabled="Boolean(edit) || unavailable"
-                @click="selected = detailRow.previousContractId"
-                >查看原合同</ElButton
-              >
-            </dd>
-          </div>
-        </dl>
-        <ContractFiles
-          :files="detailRow.files || []"
-          :unavailable="Boolean(edit) || unavailable"
-          @classify="startEdit('classification', detailRow, $event)"
-        />
-        <div v-if="session.canWrite" class="oa-actions">
-          <ElButton
-            v-if="detailRow.status === 'DRAFT'"
-            :disabled="Boolean(edit) || unavailable"
-            @click="startEdit('edit', detailRow)"
-            >编辑草稿</ElButton
-          >
-          <ElButton
-            v-if="detailRow.status === 'DRAFT'"
-            :disabled="Boolean(edit) || unavailable"
-            @click="startEdit('sign', detailRow)"
-            >登记签署</ElButton
-          >
-          <ElButton
-            v-if="detailRow.status === 'SIGNED'"
-            :disabled="Boolean(edit) || unavailable"
-            @click="startEdit('terminate', detailRow)"
-            >终止合同</ElButton
-          >
-          <ElButton
-            :disabled="Boolean(edit) || unavailable"
-            @click="startEdit('renew', detailRow)"
-            >续约</ElButton
-          >
-          <ElButton
-            :disabled="Boolean(edit) || unavailable"
-            @click="startEdit('attachment', detailRow)"
-            >添加附件</ElButton
-          >
-        </div>
-        <AuditHistory
-          :key="detailRow.id"
-          :contract-id="detailRow.id"
-          :revision="revision"
-          title="合同状态与版本历史"
-        />
-      </template>
-    </section>
-
-    <AttachmentClassification
-      v-if="edit?.kind === 'classification'"
-      :file="edit.file"
-      :refresh="refreshRecords"
-      @cancel="stopEdit"
-      @saved="saved(null, '附件访问范围已更新。')"
-      @reconciled="reconciled"
-    />
-    <AttachmentForm
-      v-if="edit?.kind === 'attachment'"
-      :contract-id="edit.contract.id"
-      :refresh="refreshRecords"
-      @cancel="stopEdit"
-      @uploaded="saved(null, '附件已上传。')"
-    />
-
-    <div v-show="!edit">
+    </div>
+    <div v-show="!editing">
       <RemoteState
         :loading="loading"
         :error="error"
@@ -288,9 +208,7 @@ function reconciled() {
         :aria-busy="loading"
       >
         <article
-          v-for="contract in result.list.filter(
-            row => row.id !== detailRow?.id
-          )"
+          v-for="contract in result.list.filter(row => row.id !== selected)"
           :key="contract.id"
           class="oa-contract"
         >
@@ -317,44 +235,44 @@ function reconciled() {
           </p>
           <ContractFiles
             :files="contract.files || []"
-            :unavailable="Boolean(edit) || unavailable"
-            @classify="startEdit('classification', contract, $event)"
+            :unavailable="unavailable || loading"
+            @classify="startTask('classification', contract, $event)"
           />
           <div class="oa-actions">
             <ElButton
               text
               type="primary"
-              :disabled="loading || Boolean(edit) || unavailable"
-              @click="selected = contract.id"
+              :disabled="loading || unavailable"
+              @click="select(contract.id)"
               >查看合同详情</ElButton
             >
             <template v-if="session.canWrite">
               <ElButton
                 v-if="contract.status === 'DRAFT'"
-                :disabled="loading || Boolean(edit) || unavailable"
-                @click="startEdit('edit', contract)"
+                :disabled="loading || unavailable"
+                @click="startTask('edit', contract)"
                 >编辑草稿</ElButton
               >
               <ElButton
                 v-if="contract.status === 'DRAFT'"
-                :disabled="loading || Boolean(edit) || unavailable"
-                @click="startEdit('sign', contract)"
+                :disabled="loading || unavailable"
+                @click="startTask('sign', contract)"
                 >登记签署</ElButton
               >
               <ElButton
                 v-if="contract.status === 'SIGNED'"
-                :disabled="loading || Boolean(edit) || unavailable"
-                @click="startEdit('terminate', contract)"
+                :disabled="loading || unavailable"
+                @click="startTask('terminate', contract)"
                 >终止合同</ElButton
               >
               <ElButton
-                :disabled="loading || Boolean(edit) || unavailable"
-                @click="startEdit('renew', contract)"
+                :disabled="loading || unavailable"
+                @click="startTask('renew', contract)"
                 >续约</ElButton
               >
               <ElButton
-                :disabled="loading || Boolean(edit) || unavailable"
-                @click="startEdit('attachment', contract)"
+                :disabled="loading || unavailable"
+                @click="startTask('attachment', contract)"
                 >添加附件</ElButton
               >
             </template>
@@ -366,7 +284,7 @@ function reconciled() {
         :page="page"
         :total="result.total"
         :page-size="result.pageSize"
-        :disabled="loading || Boolean(edit) || unavailable"
+        :disabled="loading || editing || unavailable"
         label="劳动合同分页"
         @change="page = $event"
       />
@@ -377,29 +295,19 @@ function reconciled() {
 <style scoped>
 .oa-contract {
   padding: 16px 0;
-  border: 0;
   border-top: 1px solid var(--oa-line);
-  border-radius: 0;
 }
 
 .oa-contract:first-child {
   border-top: 0;
 }
 
-.oa-contract-spotlight {
-  padding-top: 0;
-  margin: 0;
-  border-top: 0;
-  border-left: 0;
+.oa-selected-contract {
+  margin-block: 16px;
 }
 
-.oa-contract-spotlight :deep(.oa-audit) {
-  padding: 16px 0 0;
-  border: 0;
-  box-shadow: none;
-}
-
-.oa-contract-summary {
-  margin: 12px 0;
+.oa-close-contract {
+  justify-content: flex-end;
+  margin-bottom: 8px;
 }
 </style>

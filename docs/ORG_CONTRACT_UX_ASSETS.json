@@ -1,0 +1,455 @@
+{
+  "data": "synthetic local QA/demo records",
+  "files": [
+    {
+      "file": "assets/org-contract-ux/before/department-real-default-1440x900-light.png",
+      "sha256": "4affd7d0c20d27fb6c982459b054d2f61eede4d35b0becdccde710635a3b58c3",
+      "kind": "department",
+      "phase": "before",
+      "runtime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+      "role": "hr_admin",
+      "viewport": [
+        1440,
+        900
+      ],
+      "theme": "light",
+      "state": "same real demo organization"
+    },
+    {
+      "file": "assets/org-contract-ux/after/department-real-default-1440x900-light.png",
+      "sha256": "0496146f20f0b434d2923f46d6ef4d49db263abb4c9d2d60ad188c7aac5893aa",
+      "kind": "department",
+      "phase": "after",
+      "runtime": "fdf92a4e4238ca506ea8cc930d533a36d5545d80",
+      "role": "hr_admin",
+      "viewport": [
+        1440,
+        900
+      ],
+      "theme": "light",
+      "state": "same real demo organization"
+    },
+    {
+      "file": "assets/org-contract-ux/before/department-real-locate-1440x900-light.png",
+      "sha256": "4affd7d0c20d27fb6c982459b054d2f61eede4d35b0becdccde710635a3b58c3",
+      "kind": "department",
+      "phase": "before",
+      "runtime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+      "role": "hr_admin",
+      "viewport": [
+        1440,
+        900
+      ],
+      "theme": "light",
+      "state": "old paginated list, same demo department visible"
+    },
+    {
+      "file": "assets/org-contract-ux/after/department-real-locate-1440x900-light.png",
+      "sha256": "e3645216964d21b4adb11013577d463d9dc61900aec78c244f597c78415345ba",
+      "kind": "department",
+      "phase": "after",
+      "runtime": "fdf92a4e4238ca506ea8cc930d533a36d5545d80",
+      "role": "hr_admin",
+      "viewport": [
+        1440,
+        900
+      ],
+      "theme": "light",
+      "state": "new search located the same demo department"
+    },
+    {
+      "file": "assets/org-contract-ux/before/department-real-history-1440x900-light.png",
+      "sha256": "688231d94f98d2ce30b8aa5532bf919d9b5d2cc6fcfffc01b56e11bfb7b32778",
+      "kind": "department",
+      "phase": "before",
+      "runtime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+      "role": "hr_admin",
+      "viewport": [
+        1440,
+        900
+      ],
+      "theme": "light",
+      "state": "same demo department audit history"
+    },
+    {
+      "file": "assets/org-contract-ux/after/department-real-history-1440x900-light.png",
+      "sha256": "63169f1cb0947792a6a303caf314f1e093ffd88521b24bd33f62442d45f87fde",
+      "kind": "department",
+      "phase": "after",
+      "runtime": "fdf92a4e4238ca506ea8cc930d533a36d5545d80",
+      "role": "hr_admin",
+      "viewport": [
+        1440,
+        900
+      ],
+      "theme": "light",
+      "state": "same demo department audit history"
+    },
+    {
+      "file": "assets/org-contract-ux/before/department-real-default-1366x768-dark.png",
+      "sha256": "b97191f58b276fd344817ecc5ea10b6fb9ab8f0d62202b1bb2fb30475bccc98e",
+      "kind": "department",
+      "phase": "before",
+      "runtime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+      "role": "hr_admin",
+      "viewport": [
+        1366,
+        768
+      ],
+      "theme": "dark",
+      "state": "same real demo organization"
+    },
+    {
+      "file": "assets/org-contract-ux/after/department-real-default-1366x768-dark.png",
+      "sha256": "748fc9648ab4a644ab18d28fb894a5ab79db56d72f8a13edf46fcc1fdf488925",
+      "kind": "department",
+      "phase": "after",
+      "runtime": "fdf92a4e4238ca506ea8cc930d533a36d5545d80",
+      "role": "hr_admin",
+      "viewport": [
+        1366,
+        768
+      ],
+      "theme": "dark",
+      "state": "same real demo organization"
+    },
+    {
+      "file": "assets/org-contract-ux/before/department-real-locate-1366x768-dark.png",
+      "sha256": "b97191f58b276fd344817ecc5ea10b6fb9ab8f0d62202b1bb2fb30475bccc98e",
+      "kind": "department",
+      "phase": "before",
+      "runtime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+      "role": "hr_admin",
+      "viewport": [
+        1366,
+        768
+      ],
+      "theme": "dark",
+      "state": "old paginated list, same demo department visible"
+    },
+    {
+      "file": "assets/org-contract-ux/after/department-real-locate-1366x768-dark.png",
+      "sha256": "72c60a3bfbada9c744d37550b6ff5734c245bfc010670e9af55df44edc2cc734",
+      "kind": "department",
+      "phase": "after",
+      "runtime": "fdf92a4e4238ca506ea8cc930d533a36d5545d80",
+      "role": "hr_admin",
+      "viewport": [
+        1366,
+        768
+      ],
+      "theme": "dark",
+      "state": "new search located the same demo department"
+    },
+    {
+      "file": "assets/org-contract-ux/before/department-real-history-1366x768-dark.png",
+      "sha256": "105f2d54f9a09ce5718dd33f59cd2f581bf6f7546914bab5702bd48696154425",
+      "kind": "department",
+      "phase": "before",
+      "runtime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+      "role": "hr_admin",
+      "viewport": [
+        1366,
+        768
+      ],
+      "theme": "dark",
+      "state": "same demo department audit history"
+    },
+    {
+      "file": "assets/org-contract-ux/after/department-real-history-1366x768-dark.png",
+      "sha256": "5d8a50c989e86273deb399b5a99d68a9b306cd96b1cb3e3913e6916d87f56bf8",
+      "kind": "department",
+      "phase": "after",
+      "runtime": "fdf92a4e4238ca506ea8cc930d533a36d5545d80",
+      "role": "hr_admin",
+      "viewport": [
+        1366,
+        768
+      ],
+      "theme": "dark",
+      "state": "same demo department audit history"
+    },
+    {
+      "file": "assets/org-contract-ux/before/department-real-default-390x844-dark.png",
+      "sha256": "aca56b3732919b8d69dc6118c5d0255ee21d7ef07d46c246eb3f2910cd657b8e",
+      "kind": "department",
+      "phase": "before",
+      "runtime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+      "role": "hr_admin",
+      "viewport": [
+        390,
+        844
+      ],
+      "theme": "dark",
+      "state": "same real demo organization"
+    },
+    {
+      "file": "assets/org-contract-ux/after/department-real-default-390x844-dark.png",
+      "sha256": "4bd2be5b593d7bf9f36bb237525ece0cdbfd37192edbcd03e1954c9451d0471a",
+      "kind": "department",
+      "phase": "after",
+      "runtime": "fdf92a4e4238ca506ea8cc930d533a36d5545d80",
+      "role": "hr_admin",
+      "viewport": [
+        390,
+        844
+      ],
+      "theme": "dark",
+      "state": "same real demo organization"
+    },
+    {
+      "file": "assets/org-contract-ux/before/department-real-locate-390x844-dark.png",
+      "sha256": "aca56b3732919b8d69dc6118c5d0255ee21d7ef07d46c246eb3f2910cd657b8e",
+      "kind": "department",
+      "phase": "before",
+      "runtime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+      "role": "hr_admin",
+      "viewport": [
+        390,
+        844
+      ],
+      "theme": "dark",
+      "state": "old paginated list, same demo department visible"
+    },
+    {
+      "file": "assets/org-contract-ux/after/department-real-locate-390x844-dark.png",
+      "sha256": "6691d2129ec9b69fbf3095ffbb6b6b26695c2a3375b57e8c9227e8ba02f22adb",
+      "kind": "department",
+      "phase": "after",
+      "runtime": "fdf92a4e4238ca506ea8cc930d533a36d5545d80",
+      "role": "hr_admin",
+      "viewport": [
+        390,
+        844
+      ],
+      "theme": "dark",
+      "state": "new search located the same demo department"
+    },
+    {
+      "file": "assets/org-contract-ux/before/department-real-history-390x844-dark.png",
+      "sha256": "6182068e4747052967da69b20ce93ea14c2afe180721f84bceb06a32e512e8a7",
+      "kind": "department",
+      "phase": "before",
+      "runtime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+      "role": "hr_admin",
+      "viewport": [
+        390,
+        844
+      ],
+      "theme": "dark",
+      "state": "same demo department audit history"
+    },
+    {
+      "file": "assets/org-contract-ux/after/department-real-history-390x844-dark.png",
+      "sha256": "126d0468c016e0e3a44491fec0763f8f811dc392be3823e74355b90ac752672f",
+      "kind": "department",
+      "phase": "after",
+      "runtime": "fdf92a4e4238ca506ea8cc930d533a36d5545d80",
+      "role": "hr_admin",
+      "viewport": [
+        390,
+        844
+      ],
+      "theme": "dark",
+      "state": "same demo department audit history"
+    },
+    {
+      "file": "assets/org-contract-ux/after/department-real-details-1440x900-light.png",
+      "sha256": "9a7389cd533190526e91d05bdeaa5e1e722a17af4a7b497f0ac0b52575c6237a",
+      "kind": "department",
+      "phase": "after",
+      "runtime": "fdf92a4e4238ca506ea8cc930d533a36d5545d80",
+      "role": "hr_admin",
+      "viewport": [
+        1440,
+        900
+      ],
+      "theme": "light",
+      "state": "new details drawer for the same demo department"
+    },
+    {
+      "file": "assets/org-contract-ux/after/department-real-details-1366x768-dark.png",
+      "sha256": "76f81983833c076ff29183860e2649b734045bd1d1503962a9ab192df8ae88f7",
+      "kind": "department",
+      "phase": "after",
+      "runtime": "fdf92a4e4238ca506ea8cc930d533a36d5545d80",
+      "role": "hr_admin",
+      "viewport": [
+        1366,
+        768
+      ],
+      "theme": "dark",
+      "state": "new details drawer for the same demo department"
+    },
+    {
+      "file": "assets/org-contract-ux/after/department-real-details-390x844-dark.png",
+      "sha256": "b4ba03b03187b1a70f6d211436c61712af2b10fe1781b493fb66887aa92379d9",
+      "kind": "department",
+      "phase": "after",
+      "runtime": "fdf92a4e4238ca506ea8cc930d533a36d5545d80",
+      "role": "hr_admin",
+      "viewport": [
+        390,
+        844
+      ],
+      "theme": "dark",
+      "state": "new details drawer for the same demo department"
+    },
+    {
+      "file": "assets/org-contract-ux/before/contract-1440x900-light-no-preference.png",
+      "sha256": "907cc093739f9105c96d7ea85ba6923b5ee16c440e2bf367a21880f828926806",
+      "kind": "contract",
+      "phase": "before",
+      "runtime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+      "condition": "1440x900-light-no-preference",
+      "role": "HR_ADMIN",
+      "state": "target contract loaded"
+    },
+    {
+      "file": "assets/org-contract-ux/after/contract-1440x900-light-no-preference.png",
+      "sha256": "8c15b57ce5a4afa8409b1d0e02c40257cb22bcb34a90a8be207d50756ccd9d72",
+      "kind": "contract",
+      "phase": "after",
+      "runtime": "e495e2a64c6ff68d79d21e3021797860123e1761",
+      "condition": "1440x900-light-no-preference",
+      "role": "HR_ADMIN",
+      "state": "target contract loaded"
+    },
+    {
+      "file": "assets/org-contract-ux/before/contract-1366x768-dark-no-preference.png",
+      "sha256": "19fc8f7907ce337527369c559d79413dbc457c899e8dd2b71de0b06e5809642d",
+      "kind": "contract",
+      "phase": "before",
+      "runtime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+      "condition": "1366x768-dark-no-preference",
+      "role": "HR_ADMIN",
+      "state": "target contract loaded"
+    },
+    {
+      "file": "assets/org-contract-ux/after/contract-1366x768-dark-no-preference.png",
+      "sha256": "6a8f5c9e8ab417bf84b4263dd8d0456ea01175229d415cbf972c833e43fd5a01",
+      "kind": "contract",
+      "phase": "after",
+      "runtime": "e495e2a64c6ff68d79d21e3021797860123e1761",
+      "condition": "1366x768-dark-no-preference",
+      "role": "HR_ADMIN",
+      "state": "target contract loaded"
+    },
+    {
+      "file": "assets/org-contract-ux/before/contract-390x844-light-no-preference.png",
+      "sha256": "f5789cb46772917ad2f883cb1035a4bfff043b0bb77b5f406c6b86984c670311",
+      "kind": "contract",
+      "phase": "before",
+      "runtime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+      "condition": "390x844-light-no-preference",
+      "role": "HR_ADMIN",
+      "state": "target contract loaded"
+    },
+    {
+      "file": "assets/org-contract-ux/after/contract-390x844-light-no-preference.png",
+      "sha256": "c80caec72d9dae444aeee5a32bf6eebd70573c8d48ae2bd78c34935c1c43e4d7",
+      "kind": "contract",
+      "phase": "after",
+      "runtime": "e495e2a64c6ff68d79d21e3021797860123e1761",
+      "condition": "390x844-light-no-preference",
+      "role": "HR_ADMIN",
+      "state": "target contract loaded"
+    },
+    {
+      "file": "assets/org-contract-ux/before/contract-360x800-dark-no-preference.png",
+      "sha256": "0f1793a3c2cbd2ec880b96ece4231884c309d9e55fa0c66b9928fa2f5712bc2f",
+      "kind": "contract",
+      "phase": "before",
+      "runtime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+      "condition": "360x800-dark-no-preference",
+      "role": "HR_ADMIN",
+      "state": "target contract loaded"
+    },
+    {
+      "file": "assets/org-contract-ux/after/contract-360x800-dark-no-preference.png",
+      "sha256": "dabc7de5b9947f30fbb8ac80db0a3c3ce9ce19eb25edb4ae5523739d438f8f02",
+      "kind": "contract",
+      "phase": "after",
+      "runtime": "e495e2a64c6ff68d79d21e3021797860123e1761",
+      "condition": "360x800-dark-no-preference",
+      "role": "HR_ADMIN",
+      "state": "target contract loaded"
+    },
+    {
+      "file": "assets/org-contract-ux/before/contract-320x740-dark-reduce.png",
+      "sha256": "d113cb7cb83fe7bf0a118b39c216c55d65372a404d5b24ddb57aea8054575370",
+      "kind": "contract",
+      "phase": "before",
+      "runtime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+      "condition": "320x740-dark-reduce",
+      "role": "HR_ADMIN",
+      "state": "target contract loaded"
+    },
+    {
+      "file": "assets/org-contract-ux/after/contract-320x740-dark-reduce.png",
+      "sha256": "57f23abecd5958da4ef49f7fcb7f994207352a50a30ea022953565e32499b4f1",
+      "kind": "contract",
+      "phase": "after",
+      "runtime": "e495e2a64c6ff68d79d21e3021797860123e1761",
+      "condition": "320x740-dark-reduce",
+      "role": "HR_ADMIN",
+      "state": "target contract loaded"
+    },
+    {
+      "file": "assets/org-contract-ux/video/before-1440x900-light-no-preference.webm",
+      "sha256": "d6661fbd1130836610ecbf8b9d509163389742a1f3d123632fca292c8543579b",
+      "kind": "video",
+      "phase": "before",
+      "runtime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+      "condition": [
+        1440,
+        900,
+        "light",
+        "no-preference"
+      ],
+      "editing": "trim aligned to the reminder viewport immediately before activation, VP8 re-encode"
+    },
+    {
+      "file": "assets/org-contract-ux/video/after-1440x900-light-no-preference.webm",
+      "sha256": "414b0c6ace511ee71d9de2d75cd6721e32dfc07075dede207b9bb797d3824b5b",
+      "kind": "video",
+      "phase": "after",
+      "runtime": "e495e2a64c6ff68d79d21e3021797860123e1761",
+      "condition": [
+        1440,
+        900,
+        "light",
+        "no-preference"
+      ],
+      "editing": "trim aligned to the reminder viewport immediately before activation, VP8 re-encode"
+    },
+    {
+      "file": "assets/org-contract-ux/video/before-390x844-light-no-preference.webm",
+      "sha256": "7d763e30793f830434698410c7034c1665b5e7c20bf8679a65f8a576d07937db",
+      "kind": "video",
+      "phase": "before",
+      "runtime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+      "condition": [
+        390,
+        844,
+        "light",
+        "no-preference"
+      ],
+      "editing": "trim aligned to the reminder viewport immediately before activation, VP8 re-encode"
+    },
+    {
+      "file": "assets/org-contract-ux/video/after-390x844-light-no-preference.webm",
+      "sha256": "88ca5abbc974e6415eedc2af8a2b2d67e29dc2cc60166a90c219457f57792d14",
+      "kind": "video",
+      "phase": "after",
+      "runtime": "e495e2a64c6ff68d79d21e3021797860123e1761",
+      "condition": [
+        390,
+        844,
+        "light",
+        "no-preference"
+      ],
+      "editing": "trim aligned to the reminder viewport immediately before activation, VP8 re-encode"
+    }
+  ]
+}

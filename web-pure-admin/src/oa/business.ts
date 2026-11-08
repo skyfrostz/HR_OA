@@ -14,6 +14,9 @@ export type Department = {
   version: number;
 };
 
+/** Complete department-tree entry; employeeCount is authorized direct staff only. */
+export type DepartmentTreeNode = Department & { employeeCount: number };
+
 export type Employee = {
   id: number;
   employeeNo: string;

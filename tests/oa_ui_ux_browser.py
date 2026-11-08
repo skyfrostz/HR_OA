@@ -43,6 +43,8 @@ LONG = "这是用于界面验收的合成说明，检查长中文内容换行、
 def heading(page, name):
     if name == "员工档案":
         return page.get_by_role("heading", name=re.compile(r"^员工档案(?:\s*\d+\s*人)?$"), level=1)
+    if name == "部门管理":
+        return page.get_by_role("heading", name=re.compile(r"^部门管理(?:\s*\d+\s*个部门)?$"), level=1)
     return page.get_by_role("heading", name=name, exact=True)
 
 
@@ -146,9 +148,11 @@ class Capture:
             # Raw Playwright diagnostics may embed input values; retain error type and failing line.
             import traceback
             frames = traceback.extract_tb(error.__traceback__)
-            local = [frame for frame in frames if Path(frame.filename).name == Path(__file__).name]
+            tests_dir = Path(__file__).resolve().parent
+            local = [frame for frame in frames if Path(frame.filename).resolve().parent == tests_dir]
             first = local[-1] if local else frames[-1]
-            item = {"scenario": label, "type": type(error).__name__, "line": first.lineno,
+            item = {"scenario": label, "type": type(error).__name__, "file": Path(first.filename).name,
+                    "line": first.lineno,
                     "check": first.line}
             self.index["failedAttempts"].append(item)
             self.index["latestChecks"][label] = "FAIL"
@@ -518,7 +522,8 @@ def route_shot(cap, page, probe, path, role, size, theme):
     start = len(probe.events)
     goto(page, path)
     page.wait_for_load_state("networkidle")
-    region = page.get_by_role("region", name=ROUTES[path][0], exact=True).first
+    region_name = re.compile(r"^部门管理(?:\s*\d+\s*个部门)?$") if path == "/departments" else ROUTES[path][0]
+    region = page.get_by_role("region", name=region_name, exact=True).first
     anchor = region.get_by_role("heading").nth(1)
     sample = None
     if path == "/integrations":
@@ -704,6 +709,8 @@ def reminder_double_activation(cap):
         page.wait_for_load_state("networkidle")
         attempts = []
         count = 3 if cap.args.phase == "after" else 1
+        in_place = cap.args.phase == "after"
+        rows = call(cap.base, "/contract-reminders?days=30&page=1&pageSize=20", cap.token(ADMIN))["list"]
         for cycle in range(count):
             goto(page, "/contract-reminders")
             region, state = monitor_ready(page, "/contract-reminders", probe)
@@ -712,10 +719,20 @@ def reminder_double_activation(cap):
             expect(view).to_be_enabled()
             row = view.locator("xpath=ancestor::tr[1]")
             contract_no = row.get_by_role("cell").nth(1).inner_text().strip()
+            target = next(item for item in rows if item["contractNo"] == contract_no)
             start = len(probe.events)
-            # Same browser task while the first router push is still pending.
-            view.evaluate("e => { e.click(); e.click(); }")
-            expect(heading(page, "员工档案")).to_be_visible()
+            if in_place:
+                path = f"/api/oa/v1/contracts/{target['contractId']}"
+                with page.expect_response(lambda r: urlsplit(r.url).path == path and r.request.method == "GET") as response:
+                    view.evaluate("e => { e.click(); e.click(); }")
+                detail = response.value.json()["data"]
+                assert response.value.ok and detail["id"] == target["contractId"]
+                assert detail["employeeId"] == target["employeeId"] and detail["contractNo"] == contract_no
+                expect(heading(page, "合同到期提醒")).to_be_visible()
+                assert urlsplit(page.url).fragment == "/contract-reminders"
+            else:
+                view.evaluate("e => { e.click(); e.click(); }")
+                expect(heading(page, "员工档案")).to_be_visible()
             page.wait_for_load_state("networkidle")
             dialog = page.get_by_role("dialog")
             matched = dialog.get_by_text(contract_no, exact=True)
@@ -738,9 +755,13 @@ def reminder_double_activation(cap):
                 cap.shot(page, probe, key, ADMIN, DESKTOP, "light", state=record["state"])
             if cap.args.phase == "after":
                 assert record["state"] == "target-open"
+                assert [item for item in record["api"] if item[:2] == ["GET", "/api/oa/v1/contracts/:id"]] == [
+                    ["GET", "/api/oa/v1/contracts/:id", 200]]
+                assert all(not re.search(r"/(?:employees|departments)(?:/|$)", item[1]) for item in record["api"])
             if cycle + 1 < count:
-                button(dialog, "返回员工列表").click()
+                page.keyboard.press("Escape")
                 expect(dialog).to_have_count(0)
+                expect(view).to_be_focused()
     finally:
         page.context.close()
 

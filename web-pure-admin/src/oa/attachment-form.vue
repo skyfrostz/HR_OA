@@ -1,5 +1,11 @@
 <script setup>
-import { shallowRef, onMounted, useTemplateRef } from "vue";
+import {
+  shallowRef,
+  onMounted,
+  onScopeDispose,
+  useTemplateRef,
+  watch
+} from "vue";
 import { ElAlert, ElButton } from "element-plus";
 import { useSession } from "./session";
 
@@ -7,8 +13,12 @@ const props = defineProps({
   contractId: { type: Number, required: true },
   refresh: { type: Function, required: true }
 });
-const emit = defineEmits(["uploaded", "cancel"]);
+const emit = defineEmits(["uploaded", "cancel", "state-change"]);
 const session = useSession();
+let disposed = false;
+onScopeDispose(() => {
+  disposed = true;
+});
 const heading = useTemplateRef("heading");
 const fileInput = useTemplateRef("fileInput");
 onMounted(() => heading.value.focus());
@@ -17,6 +27,17 @@ const classification = shallowRef("RESTRICTED");
 const busy = shallowRef(false);
 const requiresRefresh = shallowRef(false);
 const error = shallowRef("");
+watch(
+  [busy, selectedFile, classification, requiresRefresh],
+  () =>
+    emit("state-change", {
+      busy: busy.value,
+      dirty:
+        Boolean(selectedFile.value || requiresRefresh.value) ||
+        classification.value !== "RESTRICTED"
+    }),
+  { immediate: true, flush: "sync" }
+);
 
 function selectFile(event) {
   error.value = "";
@@ -51,7 +72,7 @@ async function submit() {
       file: selectedFile.value,
       fileFields: { classification: classification.value }
     });
-    emit("uploaded");
+    if (!disposed) emit("uploaded");
   } catch (cause) {
     requiresRefresh.value = !cause.status || cause.status >= 500;
     error.value = requiresRefresh.value

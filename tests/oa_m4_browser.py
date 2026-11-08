@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import re
+from urllib.parse import urlsplit
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -355,9 +356,14 @@ def lifecycle(browser, base, state, artifacts):
     due = state["contract"]["due"]
     reminder = page.get_by_role("row").filter(has_text=due["contractNo"])
     expect(reminder).to_have_count(1)
-    with page.expect_response(lambda response: response.url.endswith(f"/contracts/{due['id']}") and response.ok):
+    with page.expect_response(lambda response: response.url.endswith(f"/contracts/{due['id']}") and response.ok) as reply:
         button(reminder, "查看合同").click()
+    contract = reply.value.json()["data"]
+    assert (contract["id"], contract["employeeId"], contract["contractNo"]) == (
+        due["id"], state["employeeId"], due["contractNo"])
+    assert urlsplit(page.url).fragment == "/contract-reminders"
     expect(dialog.get_by_text(due["contractNo"], exact=True).first).to_be_visible()
+    expect(button(dialog, "终止合同")).to_have_count(0)
     screenshot(page, artifacts, "contract-reminder-direct-1440.png")
     check_storage(page, traffic.sensitive)
     traffic.assert_local()

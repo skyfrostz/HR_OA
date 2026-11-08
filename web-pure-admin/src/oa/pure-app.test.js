@@ -600,9 +600,15 @@ it("integrates the Pure menus with employee versions, department edits, half-day
 
     menu("部门管理");
     await settle();
+    button("列表").click();
+    await flushPromises();
+    document
+      .querySelector('.oa-org-directory button[aria-label="查看部门 合成部门"]')
+      .click();
+    await settle();
     button("编辑部门").click();
     await flushPromises();
-    const departmentName = document.querySelector("form input");
+    const departmentName = document.querySelector("#department-name");
     departmentName.value = "合成部门改名";
     departmentName.dispatchEvent(new Event("input", { bubbles: true }));
     menu("员工档案");
@@ -612,7 +618,9 @@ it("integrates the Pure menus with employee versions, department edits, half-day
     expect(activeMenuLabels()).toEqual(["部门管理"]);
     expect(button("刷新").disabled).toBe(true);
     button("刷新").click();
-    expect(document.querySelector("form input").value).toBe("合成部门改名");
+    expect(document.querySelector("#department-name").value).toBe(
+      "合成部门改名"
+    );
     submit();
     await settle();
     expect(appRoot.textContent).toContain("合成部门改名");
@@ -626,15 +634,28 @@ it("integrates the Pure menus with employee versions, department edits, half-day
       version: 3
     });
 
+    document
+      .querySelector(".oa-department-drawer .el-drawer__close-btn")
+      .click();
+    await settle();
     menu("合同到期提醒");
     await settle();
     expect(appRoot.textContent).toContain("已逾期 2 天");
+    const beforeContractOpen = fetchMock.mock.calls.length;
     button("查看合同").click();
     await settle();
-    expect(appRoot.querySelector("#oa-focused-contract")?.textContent).toBe(
-      "SIM-C21"
-    );
-    expect(router.currentRoute.value.fullPath).toBe("/employees");
+    expect(
+      document.querySelector(".oa-contract-drawer #oa-focused-contract")
+        ?.textContent
+    ).toBe("SIM-C21");
+    expect(router.currentRoute.value.fullPath).toBe("/contract-reminders");
+    expect(
+      fetchMock.mock.calls
+        .slice(beforeContractOpen)
+        .some(([url]) =>
+          /\/employees(?:\/|\?)|\/departments(?:\/|\?)/.test(url)
+        )
+    ).toBe(false);
 
     menu("Excel 导入");
     await settle();

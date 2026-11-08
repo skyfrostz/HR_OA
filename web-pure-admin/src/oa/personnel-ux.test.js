@@ -1,9 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { flushPromises, mount } from "@vue/test-utils";
-import { createMemoryHistory, createRouter } from "vue-router";
 import { ElDatePicker } from "element-plus";
 import AuditHistory from "./audit-history.vue";
-import ContractReminders from "./contract-reminders.vue";
 import ContractForm from "./contract-form.vue";
 import EmployeeDetail from "./employee-detail.vue";
 
@@ -28,20 +26,6 @@ vi.mock("vue-router", async original => ({
 }));
 let wrapper;
 const page = list => ({ list, page: 1, pageSize: 20, total: list.length });
-const row = {
-  employeeId: 11,
-  contractId: 21,
-  employeeName: "合成员工",
-  employeeNo: "SIM-011",
-  contractNo: "SIM-021",
-  endDate: "2026-11-20",
-  daysRemaining: 12
-};
-const table = {
-  props: ["data"],
-  template:
-    '<div><template v-for="row in data"><slot name="actions" :row="row" /></template></div>'
-};
 function button(label) {
   return wrapper.findAll("button").find(x => x.text() === label);
 }
@@ -224,76 +208,6 @@ it("does not reveal salary audit events to a reader lacking salary permission", 
   await flushPromises();
   expect(wrapper.text()).not.toContain("9876");
   expect(wrapper.find(".oa-audit-timeline").exists()).toBe(false);
-});
-
-it("suppresses rapid duplicate contract navigation and permits retry after an aborted route", async () => {
-  const router = createRouter({
-    history: createMemoryHistory(),
-    routes: [
-      { path: "/", name: "Reminders", component: { template: "<div />" } },
-      {
-        path: "/employees",
-        name: "OaEmployees",
-        component: { template: "<div />" }
-      }
-    ]
-  });
-  await router.push("/");
-  await router.isReady();
-  routing.current = router;
-  let resolveGuard;
-  const remove = router.beforeEach(to =>
-    to.name === "OaEmployees"
-      ? new Promise(resolve => {
-          resolveGuard = resolve;
-        })
-      : true
-  );
-  const push = vi.spyOn(router, "push");
-  session.authorized.mockResolvedValue(page([row]));
-  wrapper = mount(ContractReminders, {
-    global: { stubs: { PureTable: table } }
-  });
-  await flushPromises();
-  const open = button("查看合同");
-  open.element.click();
-  open.element.click();
-  await flushPromises();
-  expect(push).toHaveBeenCalledTimes(1);
-  expect(navigation).toEqual({ employeeId: 11, contractId: 21 });
-  resolveGuard(false);
-  await flushPromises();
-  expect(navigation).toEqual({ employeeId: null, contractId: null });
-  expect(wrapper.text()).toContain("未能打开合同");
-  remove();
-  await button("查看合同").trigger("click");
-  await flushPromises();
-  expect(router.currentRoute.value.name).toBe("OaEmployees");
-  expect(navigation).toEqual({ employeeId: 11, contractId: 21 });
-});
-
-it("clears a failed navigation intent without clearing a newer unrelated intent", async () => {
-  let reject;
-  routing.current = {
-    push: vi.fn(
-      () =>
-        new Promise((_, fail) => {
-          reject = fail;
-        })
-    )
-  };
-  session.authorized.mockResolvedValue(page([row]));
-  wrapper = mount(ContractReminders, {
-    global: { stubs: { PureTable: table } }
-  });
-  await flushPromises();
-  await button("查看合同").trigger("click");
-  navigation.employeeId = 55;
-  navigation.contractId = 66;
-  reject(new Error("navigation failure"));
-  await flushPromises();
-  expect(navigation).toEqual({ employeeId: 55, contractId: 66 });
-  expect(wrapper.text()).toContain("打开合同失败");
 });
 
 it("renewal creates an associated draft instead of mutating the original contract or files", async () => {

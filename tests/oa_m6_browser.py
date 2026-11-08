@@ -60,9 +60,11 @@ def attachment_flow(browser, base, page, admin, employee_id, artifacts):
     page.route(re.compile(r"^https?://example\.invalid/"), lambda route: (external.append(route.request.url), route.abort()))
     saved = attach(page, contract, PDF, FIXTURES / "m6-normal.pdf")
     assert saved["classification"] == "RESTRICTED"
-    expect(contract.get_by_text("敏感", exact=True)).to_be_visible()
+    selected = page.get_by_role("region", name="合同详情", exact=True).filter(
+        has=page.get_by_role("heading", name=record["contractNo"], exact=True))
+    expect(selected.get_by_text("敏感", exact=True)).to_be_visible()
     screenshot(page, artifacts, "restricted-file-1440.png")
-    preview = button(contract, "预览 " + PDF)
+    preview = button(selected, "预览 " + PDF)
     with page.expect_response(lambda reply: reply.url.endswith(f"/files/{saved['id']}/preview")) as requested:
         preview.click()
     assert requested.value.ok

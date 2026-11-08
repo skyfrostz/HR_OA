@@ -232,6 +232,7 @@ async function employeeUpdated() {
         v-if="employee && group === 'contracts'"
         :key="employee.id"
         :employee-id="employee.id"
+        :active="active"
         :unavailable="Boolean(editArea && editArea !== 'contract')"
         :contract-id="contractId"
         @changed="auditRevision++"

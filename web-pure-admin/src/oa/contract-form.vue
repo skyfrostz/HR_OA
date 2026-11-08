@@ -1,5 +1,13 @@
 <script setup>
-import { computed, onMounted, reactive, shallowRef, useTemplateRef } from "vue";
+import {
+  computed,
+  onMounted,
+  onScopeDispose,
+  reactive,
+  shallowRef,
+  useTemplateRef,
+  watch
+} from "vue";
 import { ElAlert, ElButton, ElDatePicker } from "element-plus";
 import { useVersionedWrite } from "./use-versioned-write";
 
@@ -9,8 +17,12 @@ const props = defineProps({
   contract: { type: Object, default: null },
   refresh: { type: Function, required: true }
 });
-const emit = defineEmits(["saved", "cancel", "reconciled"]);
+const emit = defineEmits(["saved", "cancel", "reconciled", "state-change"]);
 const heading = useTemplateRef("heading");
+let disposed = false;
+onScopeDispose(() => {
+  disposed = true;
+});
 onMounted(() => heading.value?.focus());
 const labels = {
   create: "新建合同",
@@ -30,7 +42,18 @@ const form = reactive({
 });
 const validation = shallowRef("");
 const write = useVersionedWrite();
+let creationAttempt;
 const { busy, blocked, error } = write;
+const baseline = JSON.stringify(form);
+watch(
+  () => [busy.value, blocked.value, JSON.stringify(form)],
+  () =>
+    emit("state-change", {
+      busy: busy.value,
+      dirty: Boolean(blocked.value) || JSON.stringify(form) !== baseline
+    }),
+  { immediate: true, flush: "sync" }
+);
 const today = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Asia/Shanghai",
   year: "numeric",
@@ -94,20 +117,56 @@ async function submit() {
     } else {
       data.status = "DRAFT";
       if (props.kind === "renew") data.previousContractId = props.contract.id;
+      creationAttempt = {
+        contractNo,
+        startDate: form.startDate,
+        endDate: form.endDate
+      };
     }
   }
   const result = await write.send(path, method, data);
-  if (result) emit("saved", result, labels[props.kind] + "已保存。");
+  if (result && !disposed)
+    emit("saved", result, labels[props.kind] + "已保存。");
 }
 
-function reload() {
-  return write.reconcile(
-    () =>
-      props.refresh(
-        ["create", "renew"].includes(props.kind) ? form.contractNo.trim() : ""
-      ),
-    previous => emit("reconciled", previous)
-  );
+async function reload() {
+  validation.value = "";
+  const creation = ["create", "renew"].includes(props.kind);
+  const unknownCreation = creation && blocked.value === "unknown";
+  let recovered;
+  try {
+    await write.reconcile(
+      async () => {
+        recovered = await props.refresh(
+          unknownCreation
+            ? creationAttempt?.contractNo || form.contractNo.trim()
+            : "",
+          {
+            kind: props.kind,
+            blocked: blocked.value,
+            contract: props.contract,
+            expected: creationAttempt
+          }
+        );
+        if (unknownCreation && !recovered?.id) {
+          validation.value =
+            "尚未找到可确认的合同，输入已保留。请稍后重新读取，系统不会重复提交。";
+          return false;
+        }
+        if (!recovered) validation.value = "未能读取合同，输入已保留。";
+        return Boolean(recovered);
+      },
+      previous => {
+        if (disposed) return;
+        if (unknownCreation)
+          emit("saved", recovered, "已找到匹配合同，请核对详情。");
+        else emit("reconciled", previous);
+      }
+    );
+  } catch (cause) {
+    validation.value =
+      cause.message || "核对失败，输入已保留，请稍后重新读取。";
+  }
 }
 </script>
 

@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import re
+from urllib.parse import urlsplit
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -44,7 +45,8 @@ def create_department(page, department):
         button(page, "保存部门").click()
     assert response.value.status == 201
     assert response.value.json()["data"]["name"] == department
-    expect(page.get_by_role("heading", name="部门名录")).to_be_visible()
+    expect(page.get_by_role("heading", name="部门管理")).to_be_visible()
+    expect(page.get_by_text(department, exact=True).first).to_be_visible()
 
 
 def confirm_uncertain_import(page, preview):
@@ -133,9 +135,19 @@ def main_check(page, traffic, base, state, artifacts):
     expect(due).to_have_count(1)
     expect(due.get_by_text(re.compile("今日|今天|当日"))).to_be_visible()
     page.screenshot(path=artifacts / "m3-reminders-1440.png", animations="disabled")
-    button(due, "查看合同").click()
-    expect(page.get_by_role("heading", name=state["due"]["employeeName"])).to_be_visible()
-    expect(page.get_by_role("article").filter(has_text=state["due"]["contractNo"])).to_be_visible()
+    target = state["due"]
+    with page.expect_response(lambda response: urlsplit(response.url).path ==
+                              f"/api/oa/v1/contracts/{target['contractId']}") as reply:
+        button(due, "查看合同").click()
+    assert reply.value.ok
+    contract = reply.value.json()["data"]
+    assert (contract["id"], contract["employeeId"], contract["contractNo"]) == (
+        target["contractId"], target["employeeId"], target["contractNo"])
+    expect(page.get_by_role("dialog").get_by_text(target["contractNo"], exact=True).first).to_be_visible()
+    assert urlsplit(page.url).fragment == "/contract-reminders"
+    page.keyboard.press("Escape")
+    expect(page.get_by_role("dialog")).to_be_hidden()
+    expect(button(due, "查看合同")).to_be_focused()
     no_overflow(page)
     check_storage(page, traffic.sensitive)
     button(page, "退出登录").click()

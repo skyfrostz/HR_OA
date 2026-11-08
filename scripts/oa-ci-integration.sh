@@ -54,7 +54,24 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 compose config --quiet
-compose up -d --build --wait --wait-timeout 180
+if [[ -n "${OA_CI_PINNED_API_IMAGE:-}" || -n "${OA_CI_PINNED_WEB_IMAGE:-}" ]]; then
+    [[ -n "$OA_CI_API_PORT" && "${OA_CI_PINNED_API_IMAGE:-}" =~ ^sha256:[0-9a-f]{64}$ \
+        && "${OA_CI_PINNED_WEB_IMAGE:-}" =~ ^sha256:[0-9a-f]{64}$ ]]
+    docker image tag "$OA_CI_PINNED_API_IMAGE" "$project-api:latest"
+    docker image tag "$OA_CI_PINNED_WEB_IMAGE" "$project-web:latest"
+    compose up -d --no-build --wait --wait-timeout 180
+    for service in api web; do
+        container_id="$(compose ps -q "$service")"
+        actual_image="$(docker inspect --format '{{.Image}}' "$container_id")"
+        if [[ "$service" == api ]]; then
+            [[ "$actual_image" == "$OA_CI_PINNED_API_IMAGE" ]]
+        else
+            [[ "$actual_image" == "$OA_CI_PINNED_WEB_IMAGE" ]]
+        fi
+    done
+else
+    compose up -d --build --wait --wait-timeout 180
+fi
 address="$(compose port api 8888)"
 if [[ ! "$address" =~ ^127\.0\.0\.1:[0-9]+$ ]]; then
     printf '%s\n' 'CI API is not bound to an isolated loopback port.' >&2
@@ -66,9 +83,24 @@ browser_args=()
 if [[ -n "${OA_CI_BROWSER_ARTIFACTS:-}" ]]; then
     browser_args+=(--artifacts "$OA_CI_BROWSER_ARTIFACTS")
 fi
+run_org_browser() {
+    local web="$1"
+    local org_args=()
+    if [[ -n "${OA_CI_ORG_CONTRACT_CASE:-}" ]]; then
+        org_args+=(--case "$OA_CI_ORG_CONTRACT_CASE")
+    fi
+    "$OA_CI_BROWSER_PYTHON" -B tests/oa_org_contract_browser.py --base "http://$web" \
+        --runtime "${OA_CI_ORG_CONTRACT_RUNTIME:?Provide the source digest under test}" \
+        --artifacts "${OA_CI_ORG_CONTRACT_ARTIFACTS:?Provide a local artifact directory}" --prepare-isolated \
+        ${org_args[@]+"${org_args[@]}"}
+}
 if [[ "${OA_CI_BROWSER_ONLY:-0}" == 1 ]]; then
     : "${OA_CI_BROWSER_PYTHON:?Provide a Playwright Python interpreter}"
     : "${OA_CI_WEB_PORT:?Use --mock-providers for the isolated browser project}"
+    if [[ -n "${OA_CI_ORG_CONTRACT_ARTIFACTS:-}" ]]; then
+        run_org_browser "127.0.0.1:$OA_CI_WEB_PORT"
+        exit 0
+    fi
     "$OA_CI_BROWSER_PYTHON" -B tests/oa_m6_browser.py --base "http://127.0.0.1:$OA_CI_WEB_PORT" --mock --prepare-mock \
         --section "${OA_CI_BROWSER_SECTION:-all}" ${browser_args[@]+"${browser_args[@]}"}
     exit 0
@@ -84,6 +116,9 @@ if [[ -n "$OA_CI_API_PORT" ]]; then
         "$OA_CI_BROWSER_PYTHON" -B tests/oa_m6_browser.py --base "http://$web" --mock ${browser_args[@]+"${browser_args[@]}"} || browser_status=$?
         if [[ -n "${OA_CI_UI_UX_ARTIFACTS:-}" ]]; then
             "$OA_CI_BROWSER_PYTHON" -B tests/oa_ui_ux_regression.py --base "http://$web" --artifacts "$OA_CI_UI_UX_ARTIFACTS" || browser_status=$?
+        fi
+        if [[ -n "${OA_CI_ORG_CONTRACT_ARTIFACTS:-}" ]]; then
+            run_org_browser "$web" || browser_status=$?
         fi
         if (( browser_status )); then
             exit "$browser_status"
