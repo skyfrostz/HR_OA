@@ -146,6 +146,12 @@ def excel_flow(page, admin, base, department, artifacts):
 
     errors = preview([valid, invalid])
     expect(heading(page, "预览结果")).to_be_visible()
+    # Error-priority redesign may default to errors; first show all rows so the
+    # keyboard test still proves the error-only control changes the view.
+    all_rows = button(page, "全部行")
+    if all_rows.get_attribute("aria-pressed") == "false":
+        all_rows.click()
+    expect(page.get_by_text(valid[0], exact=True)).to_be_visible()
     only = page.get_by_role("button", name=re.compile("^仅错误行"))
     only.focus()
     page.keyboard.press("Space")
@@ -160,12 +166,15 @@ def excel_flow(page, admin, base, department, artifacts):
     selected = preview([valid])
     committed = wait_write(page, f"/employee-imports/{selected['id']}/confirm", button(page, "确认导入"))
     assert committed["importedCount"] == 1
-    expect(page.get_by_text(re.compile("已导入 1 名员工"))).to_be_visible()
-    ratios = contrast(page.get_by_role("region", name="Excel 导入", exact=True),
-                      {"success_text": ".oa-inline-alert.el-alert--success .el-alert__title"})
+    expect(page.get_by_text(re.compile(r"已导入 1 名员工|1\s*名员工已导入"))).to_be_visible()
+    result_region = page.get_by_role("region", name="Excel 导入", exact=True)
+    ratios = contrast(result_region, {"success_text": ".oa-import-count, .oa-inline-alert.el-alert--success .el-alert__title"})
     print(f"M6 import success notice contrast {ratios}", flush=True)
     assert min(ratios.values()) >= 4.5
     expect(page.get_by_text(valid[0], exact=True)).to_have_count(0)
+    disclosure = page.locator("summary").filter(has_text=re.compile("^历史预览与导入结果$"))
+    if disclosure.count():
+        disclosure.click()
     history = page.get_by_role("region", name="我的导入记录", exact=True)
     with page.expect_response(lambda reply: reply.url.endswith(f"/employee-imports/{selected['id']}/result") and reply.ok):
         button(history, "查看结果").first.click()
@@ -181,7 +190,9 @@ def integration_shots(browser, page, base, artifacts):
     for label, mode in (("light", False), ("dark", True)):
         if mode:
             set_theme(page)
-        ratios = contrast(region, {"state": ".oa-integration-status", "detail": ".oa-integration-grid .oa-muted"})
+        states = {f"state-{k}": f".oa-integration-grid > section:nth-child({k}) .oa-integration-status" for k in (1, 2, 3)}
+        states["detail"] = ".oa-integration-grid .oa-muted"
+        ratios = contrast(region, states)
         assert min(ratios.values()) >= 4.5, f"integration {label} contrast: {ratios}"
         print(f"M6 integration {label} contrast {ratios}", flush=True)
         screenshot(page, artifacts, f"integration-{label}-1440.png")
@@ -229,7 +240,8 @@ def mock_logins(browser, base, artifacts, *, notice_only=False):
             notice = page.get_by_role("link", name="查看合同到期提醒", exact=True).first
             expect(notice).to_have_attribute("href", "./oa.html#/contract-reminders")
             card = notice.locator("xpath=ancestor::article")
-            ratios = contrast(card, {"delivery_status": ".van-tag", "description": ".h5-muted"})
+            expect(card.get_by_text(re.compile("^模拟(?: API 已接受)?$"))).to_be_visible()
+            ratios = contrast(card, {"delivery_status": ".van-tag", "description": "time, .h5-muted"})
             print(f"M6 H5 390px dark contract notice contrast {ratios}", flush=True)
             assert min(ratios.values()) >= 4.5
             screenshot(page, artifacts, "contract-notice-h5-390.png")

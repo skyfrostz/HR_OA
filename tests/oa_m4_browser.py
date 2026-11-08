@@ -111,6 +111,9 @@ def cross_end(browser, base, artifacts):
     button(views, "待办").focus()
     manager.keyboard.press("Enter")
     expect(manager.get_by_role("heading", name="待办", exact=True)).to_be_visible()
+    disclosure = manager.locator("details.pc-filter-disclosure > summary")
+    if disclosure.count():
+        disclosure.click()
     manager.get_by_label("申请类型").select_option("GENERAL")
     manager.get_by_label("申请状态").select_option("IN_REVIEW")
     with manager.expect_response(lambda response: "/tasks?" in response.url and "type=GENERAL" in response.url) as filtered:

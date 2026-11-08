@@ -60,6 +60,7 @@ type ImportValues struct {
 type ImportRowError struct {
 	Field   string `json:"field"`
 	Message string `json:"message"`
+	Code    string `json:"code,omitempty"`
 }
 
 type ImportRow struct {

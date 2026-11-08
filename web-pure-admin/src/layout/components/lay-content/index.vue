@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
+import { useAppStoreHook } from "@/store/modules/app";
 import LayFrame from "../lay-frame/index.vue";
 import LayFooter from "../lay-footer/index.vue";
 import { useTags } from "@/layout/hooks/useTag";
@@ -27,7 +28,7 @@ const transitions = computed(() => {
 });
 
 const hideTabs = computed(() => {
-  return $storage?.configure.hideTabs;
+  return useAppStoreHook().device === "mobile" || $storage?.configure.hideTabs;
 });
 
 const hideFooter = computed(() => {
@@ -211,5 +212,11 @@ const transitionMain = defineComponent({
 
 .main-content {
   margin: 24px;
+}
+
+@media (width <= 760px) {
+  .main-content {
+    margin: 16px;
+  }
 }
 </style>

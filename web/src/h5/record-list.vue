@@ -1,65 +1,126 @@
 <script setup>
-import { computed, onMounted, onUnmounted, shallowRef, useTemplateRef, watch } from 'vue'
-import { Button, Tag } from 'vant'
-import { listPage } from '../oa/api'
-import { useSession } from '../oa/session'
-import { useRemote } from '../oa/use-remote'
-import { actionLabels, displayDate, statusLabels, statusTone, typeLabels } from './approval'
-import PageState from './page-state.vue'
-import Pager from './pager.vue'
+  import {
+    computed,
+    onMounted,
+    onUnmounted,
+    shallowRef,
+    useTemplateRef,
+    watch
+  } from 'vue'
+  import { Button, Tag } from 'vant'
+  import { listPage } from '../oa/api'
+  import { useSession } from '../oa/session'
+  import { useRemote } from '../oa/use-remote'
+  import {
+    actionLabels,
+    displayDate,
+    statusLabels,
+    statusTone,
+    typeLabels
+  } from './approval'
+  import PageState from './page-state.vue'
+  import Pager from './pager.vue'
 
-const props = defineProps({ view: { type: String, required: true } })
-const emit = defineEmits(['open'])
-const session = useSession()
-const page = shallowRef(1)
-const heading = useTemplateRef('heading')
-const views = {
-  mine: { heading: '我的申请', path: '/requests', empty: '还没有提交过申请。' },
-  pending: { heading: '待办', path: '/tasks', empty: '当前没有待审批任务。' },
-  history: { heading: '已办', path: '/tasks/history', empty: '还没有审批操作。' },
-  notifications: { heading: '站内通知', path: '/notifications', empty: '暂无站内通知。' }
-}
-
-const view = computed(() => views[props.view])
-const { result, loading, error, load } = useRemote((signal) =>
-  session.authorized(listPage(view.value.path, page.value), { signal })
-)
-const records = computed(() => (result.value?.list || []).map((item) => {
-  if (props.view === 'notifications') {
-    return { id: item.id, requestId: item.requestId, isContract: item.kind === 'CONTRACT_EXPIRING', canOpen: Number.isSafeInteger(item.requestId) && item.requestId > 0, title: item.title, badge: ({ mock: '模拟', 'wecom-mock': '模拟 API 已接受', wecom: '企业 API 已接受' })[item.deliveryMode] || '投递模式未知', tone: 'primary', date: item.createdAt }
+  const props = defineProps({ view: { type: String, required: true } })
+  const emit = defineEmits(['open'])
+  const session = useSession()
+  const page = shallowRef(1)
+  const heading = useTemplateRef('heading')
+  const views = {
+    mine: {
+      heading: '我的申请',
+      path: '/requests',
+      empty: '还没有提交过申请。'
+    },
+    pending: { heading: '待办', path: '/tasks', empty: '当前没有待审批任务。' },
+    history: {
+      heading: '已办',
+      path: '/tasks/history',
+      empty: '还没有审批操作。'
+    },
+    notifications: {
+      heading: '站内通知',
+      path: '/notifications',
+      empty: '暂无站内通知。'
+    }
   }
-  const isMine = props.view === 'mine'
-  const isHistory = props.view === 'history'
-  return {
-    id: item.id,
-    requestId: isMine ? item.id : item.requestId,
-    title: isMine ? item.title : item.requestTitle,
-    category: typeLabels[isMine ? item.type : item.requestType],
-    meta: isMine ? '' : isHistory ? item.targetName : item.applicantName + ' · ' + item.stepName,
-    badge: isHistory ? actionLabels[item.action] : statusLabels[item.status],
-    tone: isHistory ? 'primary' : statusTone(item.status),
-    date: item.createdAt
+
+  const view = computed(() => views[props.view])
+  const { result, loading, error, load } = useRemote((signal) =>
+    session.authorized(listPage(view.value.path, page.value), { signal })
+  )
+  const records = computed(() =>
+    (result.value?.list || []).map((item) => {
+      if (props.view === 'notifications') {
+        const isContract = item.kind === 'CONTRACT_EXPIRING'
+        const objectId = isContract ? item.contractId : item.requestId
+        const objectLabel =
+          Number.isSafeInteger(objectId) && objectId > 0
+            ? (isContract ? '合同 #' : '申请 #') + objectId
+            : ''
+        return {
+          id: item.id,
+          requestId: item.requestId,
+          isContract,
+          objectLabel,
+          canOpen: Number.isSafeInteger(item.requestId) && item.requestId > 0,
+          title: item.title,
+          badge:
+            {
+              mock: '模拟',
+              'wecom-mock': '模拟 API 已接受',
+              wecom: '企业 API 已接受'
+            }[item.deliveryMode] || '投递模式未知',
+          tone: 'primary',
+          simulated: ['mock', 'wecom-mock'].includes(item.deliveryMode),
+          date: item.createdAt
+        }
+      }
+      const isMine = props.view === 'mine'
+      const isHistory = props.view === 'history'
+      return {
+        id: item.id,
+        requestId: isMine ? item.id : item.requestId,
+        title: isMine ? item.title : item.requestTitle,
+        category: typeLabels[isMine ? item.type : item.requestType],
+        meta: isMine
+          ? ''
+          : isHistory
+          ? item.targetName
+          : item.applicantName + ' · ' + item.stepName,
+        badge: isHistory
+          ? actionLabels[item.action]
+          : statusLabels[item.status],
+        tone: isHistory ? 'primary' : statusTone(item.status),
+        date: item.createdAt
+      }
+    })
+  )
+
+  watch(page, load, { immediate: true })
+  function refreshWhenVisible() {
+    if (document.visibilityState === 'visible') void load()
   }
-}))
 
-watch(page, load, { immediate: true })
-function refreshWhenVisible() {
-  if (document.visibilityState === 'visible') void load()
-}
-
-onMounted(() => {
-  heading.value.focus()
-  document.addEventListener('visibilitychange', refreshWhenVisible)
-})
-onUnmounted(() => document.removeEventListener('visibilitychange', refreshWhenVisible))
+  onMounted(() => {
+    heading.value.focus()
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+  })
+  onUnmounted(() =>
+    document.removeEventListener('visibilitychange', refreshWhenVisible)
+  )
 </script>
 
 <template>
   <section aria-labelledby="h5-list-heading">
     <div class="h5-heading h5-list-heading">
       <div>
-        <h1 id="h5-list-heading" ref="heading" tabindex="-1">{{ view.heading }}</h1>
-        <p v-if="view.path === '/notifications'" class="h5-muted">每条记录标明投递模式；API 接受不代表已送达或已读。</p>
+        <h1 id="h5-list-heading" ref="heading" tabindex="-1">
+          {{ view.heading }}
+        </h1>
+        <p v-if="view.path === '/notifications'" class="h5-muted">
+          业务事件与处理入口；投递记录可展开查看。
+        </p>
       </div>
       <Button size="small" plain type="primary" @click="load">刷新</Button>
     </div>
@@ -71,20 +132,59 @@ onUnmounted(() => document.removeEventListener('visibilitychange', refreshWhenVi
     />
     <ul v-if="!loading && records.length" class="h5-list">
       <li v-for="record in records" :key="record.id">
-        <article v-if="view.path === '/notifications' && (!record.canOpen || record.isContract)" class="h5-card">
-          <div class="h5-record-head"><strong class="h5-record-title">{{ record.title }}</strong><Tag class="h5-delivery-mode" plain type="primary">{{ record.badge }}</Tag></div>
-          <p class="h5-muted">{{ record.isContract ? '合同即将到期，请前往 PC 管理端核对期限及续约情况。' : '此通知没有可打开的申请。' }}</p>
-          <a v-if="record.isContract" class="h5-dashboard-link" href="./oa.html#/contract-reminders">查看合同到期提醒</a>
-          <p class="h5-time">{{ displayDate(record.date) }}</p>
+        <article v-if="view.path === '/notifications'" class="h5-card">
+          <button
+            v-if="record.canOpen && !record.isContract"
+            type="button"
+            class="h5-record-button h5-notice-open"
+            @click="emit('open', record.requestId)"
+          >
+            <strong class="h5-record-title">{{ record.title }}</strong
+            ><span class="h5-meta">查看申请</span>
+          </button>
+          <strong v-else class="h5-record-title">{{ record.title }}</strong>
+          <p v-if="record.objectLabel" class="h5-meta h5-notice-object">
+            {{ record.objectLabel }}
+          </p>
+          <div class="h5-meta">
+            <time :datetime="record.date">{{ displayDate(record.date) }}</time
+            ><Tag
+              v-if="record.simulated"
+              class="h5-delivery-mode"
+              plain
+              type="primary"
+              >模拟</Tag
+            >
+          </div>
+          <p v-if="!record.canOpen && !record.isContract" class="h5-muted">
+            此通知没有可打开的申请。
+          </p>
+          <a
+            v-if="record.isContract"
+            class="h5-dashboard-link"
+            href="./oa.html#/contract-reminders"
+            >查看合同到期提醒</a
+          >
+          <details class="h5-notice-diagnostic">
+            <summary>投递记录</summary>
+            <p>{{ record.badge }}。API 接受不代表已送达或已读。</p>
+          </details>
         </article>
-        <button v-else
+        <button
+          v-else
           type="button"
           class="h5-card h5-record-button"
           @click="emit('open', record.requestId)"
         >
           <span class="h5-record-head">
             <span class="h5-record-title">{{ record.title }}</span>
-            <Tag v-if="record.badge" :class="{ 'h5-delivery-mode': view.path === '/notifications' }" :type="record.tone" plain>{{ record.badge }}</Tag>
+            <Tag
+              v-if="record.badge"
+              :class="{ 'h5-delivery-mode': view.path === '/notifications' }"
+              :type="record.tone"
+              plain
+              >{{ record.badge }}</Tag
+            >
           </span>
           <span class="h5-meta">
             <span v-if="record.category">{{ record.category }}</span>
@@ -102,6 +202,13 @@ onUnmounted(() => document.removeEventListener('visibilitychange', refreshWhenVi
       :disabled="loading"
       @change="page = $event"
     />
-    <Button v-else-if="page > 1 && !loading" class="h5-block" size="small" plain @click="page = 1">返回第一页</Button>
+    <Button
+      v-else-if="page > 1 && !loading"
+      class="h5-block"
+      size="small"
+      plain
+      @click="page = 1"
+      >返回第一页</Button
+    >
   </section>
 </template>

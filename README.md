@@ -1,4 +1,4 @@
-<!-- HR OA project README, rewritten 2026-11-07. Original GVA README is preserved in README.gin-vue-admin.md. -->
+<!-- HR OA project README, updated 2026-11-08. Original GVA README is preserved in README.gin-vue-admin.md. -->
 # HR OA · 人事与办公协同系统
 
 [![HR OA CI](https://github.com/skyfrostz/HR_OA/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/skyfrostz/HR_OA/actions/workflows/ci.yaml)
@@ -13,19 +13,20 @@
 
 ## 界面预览
 
-### 企业身份与员工档案
+### 员工名册与组织
 
-![Pure Admin 企业微信显式绑定，全部为模拟资料](docs/assets/m6/wecom-binding-1440.png)
+![Pure Admin 员工名册，真实本地 API 与合成资料](docs/assets/ui-ux/after/employees-list-1440x900-light.png)
 
-### 导入历史与敏感资料清理
+### 独立审批任务
 
-![Excel 导入结果及历史，全部为模拟资料](docs/assets/m6/excel-result-history-1440.png)
+![审批创建任务，真实本地 API](docs/assets/ui-ux/after/pc-approval-create-1440x900-light.png)
 
-### 手机授权与审批工作台
+### 手机名册与请假表单
 
-<img src="docs/assets/m6/wecom-signed-in-390.png" alt="Vant H5 模拟企业授权后的实际工作台，全部为模拟资料" width="320" />
+<img src="docs/assets/ui-ux/after/employees-list-390x844-light.png" alt="390px 手机员工名册，全部为合成资料" width="320" />
+<img src="docs/assets/ui-ux/after/h5-long-top-390x844-light.png" alt="390px H5 请假任务布局" width="320" />
 
-截图来自 2026-11-07 M6 组合镜像的本地浏览器验收。[更多浅深色与窄屏截图](docs/VALIDATION_M6.md#实际页面截图)。页面使用真实 OA API；企业授权和 OSS 连接本地模拟服务，演示账号和员工资料仅用于开发测试。[M4 人事与组织页面](docs/VALIDATION_M4.md#实际页面截图)及 [M5 假期与审批页面](docs/VALIDATION_M5.md#实际页面截图)保留历史验证记录。
+截图来自本地组合镜像的真实浏览器。[同条件前后对照与索引](docs/UI_UX_SCREENSHOTS.md)、[UI/UX 验收及限制](docs/UI_UX_VALIDATION.md)分别记录页面变化和验证结果。页面使用真实 OA API，账号和员工资料为合成测试数据；企业微信与 OSS 的本地模拟不代表客户服务验收。[M4](docs/VALIDATION_M4.md#实际页面截图)、[M5](docs/VALIDATION_M5.md#实际页面截图)及 [M6](docs/VALIDATION_M6.md#实际页面截图)保留历史页面及验收记录。
 
 ## 功能与交付状态
 
@@ -190,6 +191,7 @@ M5 基线提交 `d2f2fa1` 已通过 [CI 42333448464](https://github.com/skyfrost
 - [M4 第一批验证](docs/VALIDATION_M4.md)
 - [M5 请假与审批验证](docs/VALIDATION_M5.md)
 - [M6 集成与功能收口验证](docs/VALIDATION_M6.md)
+- [UI/UX 改造验收](docs/UI_UX_VALIDATION.md)与[截图对照](docs/UI_UX_SCREENSHOTS.md)
 
 `tests/` 下的验收会写入模拟数据，部分脚本还会短暂改变测试账号权限或重建容器。`tests/results/` 中的状态文件、浏览器环境和升级前快照是相关脚本的前置条件，不随仓库分发。请按 [运行说明](docs/LOCAL_DEVELOPMENT.md) 和 [部署/验收说明](deploy/oa/README.md) 在专用开发环境执行，勿对实际业务库运行这些场景。
 
@@ -261,6 +263,9 @@ bash scripts/oa-backup.sh restore-check "$portable"
 | 文档 | 内容 |
 | --- | --- |
 | [本地开发](docs/LOCAL_DEVELOPMENT.md) | 账号、入口、运行及验证方式 |
+| [UI/UX 设计契约](docs/UI_UX_DESIGN_CONTRACT.md) | 页面类型、语义 tokens、组件、状态与桌面/H5 规则 |
+| [UI/UX 参考落实](docs/UI_UX_REFERENCES.md) | 固定参考源码、技能版本、许可、采用范围与视觉规范 |
+| [UI/UX API 增量](docs/UI_UX_API_CONTRACT.md) | 部门范围、导入错误与作废预览；兼容发布和回退顺序 |
 | [功能验收索引](docs/FEATURE_ACCEPTANCE_MATRIX.md) | 既定功能与证据逐项对应，开发与客户环境边界 |
 | [M6 范围与 API](docs/M6_SCOPE.md) | [身份、投递、附件和导入接口](docs/M6_API_CONTRACT.md) |
 | [M6 操作说明](docs/M6_USER_GUIDE.md) | 导入历史、敏感附件、企业绑定、通知与到期提醒 |

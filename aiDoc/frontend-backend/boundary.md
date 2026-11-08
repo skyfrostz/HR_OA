@@ -41,3 +41,5 @@ OA 的业务契约为 `docs/OA_API_CONTRACT.md` 及 M2/M3 扩展，接口前缀 
 M4 增量以 `docs/M4_API_CONTRACT.md` 为准：业务审计、员工账号/在职状态、合同状态转换、审批筛选及部门树；契约由后端维护并经总控复核。M4 视觉与复用要求见 `docs/M4_UI_DESIGN.md`。
 
 M5 范围见 docs/M5_SCOPE.md；契约以经总控复核的 docs/M5_API_CONTRACT.md 为准，保留M1–M4兼容语义和数据。
+
+2026-11-08 UI/UX 增量见 `docs/UI_UX_API_CONTRACT.md`：员工 POST 搜索/导出增加可选 DIRECT/SUBTREE 部门范围；导入行错误增加可选 code；新增仅创建者 HR_ADMIN 可用的预览 discard 接口，与确认共享事务锁。没有 schema 迁移，发布 API 在前、前端在后，回退顺序相反。原合同关联续约、附件对象权限、审批及假期账目、历史快照、mock 与真实投递语义不变。所有前端代码由前端会话统一集成，总控维护契约及最终验收。

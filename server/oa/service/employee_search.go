@@ -9,10 +9,21 @@ import (
 	"gorm.io/gorm"
 )
 
+const departmentScopeSubtree = "SUBTREE"
+
 func normalizeEmployeeFilter(filter model.EmployeeFilter) (model.EmployeeFilter, error) {
 	filter.Query = strings.TrimSpace(filter.Query)
 	if (filter.Query != "" && !validText(filter.Query, 100)) ||
 		(filter.DepartmentID != nil && *filter.DepartmentID == 0) {
+		return model.EmployeeFilter{}, ErrInvalid
+	}
+	switch filter.DepartmentScope {
+	case "", "DIRECT":
+	case departmentScopeSubtree:
+		if filter.DepartmentID == nil {
+			return model.EmployeeFilter{}, ErrInvalid
+		}
+	default:
 		return model.EmployeeFilter{}, ErrInvalid
 	}
 	return filter, nil
@@ -40,7 +51,21 @@ func filterEmployees(db *gorm.DB, filter model.EmployeeFilter) *gorm.DB {
 			filter.Query, filter.Query, filter.Query)
 	}
 	if filter.DepartmentID != nil {
-		db = db.Where("oa_employees.department_id = ?", *filter.DepartmentID)
+		if filter.DepartmentScope == departmentScopeSubtree {
+			// The same predicate scopes the list, total, and export. Bound
+			// recursion even if old department data has an invalid cycle.
+			return db.Where(`oa_employees.department_id IN (
+				WITH RECURSIVE department_scope AS (
+					SELECT id, 1 AS depth FROM oa_departments WHERE id = ?
+					UNION ALL
+					SELECT child.id, parent.depth + 1 FROM oa_departments AS child
+					JOIN department_scope AS parent ON child.parent_id = parent.id
+					WHERE parent.depth < ?
+				)
+				SELECT id FROM department_scope
+			)`, *filter.DepartmentID, maxDepartmentDepth)
+		}
+		return db.Where("oa_employees.department_id = ?", *filter.DepartmentID)
 	}
 	return db
 }

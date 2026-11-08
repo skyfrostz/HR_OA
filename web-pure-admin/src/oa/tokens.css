@@ -1,15 +1,24 @@
 :root {
-  --oa-primary: #3563e9;
-  --oa-primary-hover: #264ec6;
-  --oa-accent-text: var(--oa-primary-hover);
+  --oa-primary: var(--el-color-primary, #3563e9);
+  --oa-primary-hover: var(--el-color-primary-dark-2, #264ec6);
+  --oa-accent-text: var(--oa-accent-ink);
   --oa-tint: #edf2ff;
-  --oa-text: #182238;
+  --oa-text: var(--el-text-color-primary, #182238);
   --oa-muted: #667085;
-  --oa-canvas: #f5f7fb;
-  --oa-line: #e7ebf2;
+  --oa-canvas: var(--el-bg-color-page, #f5f7fb);
+  --oa-line: var(--el-border-color-light, #e7ebf2);
   --oa-font: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
   --oa-accent-ink: #2949a5;
-  --oa-shadow: 0 2px 8px #18223804;
+  --oa-shadow: none;
+  --oa-surface: var(--el-bg-color, #fff);
+  --oa-focus: var(--el-color-primary);
+  --oa-radius: 0.5rem;
+  --oa-space-xs: 0.25rem;
+  --oa-space-sm: 0.5rem;
+  --oa-space-md: 0.75rem;
+  --oa-space-lg: 1rem;
+  --oa-space-xl: 1.5rem;
+  --oa-space-2xl: 2rem;
 }
 
 html.dark {
@@ -18,5 +27,9 @@ html.dark {
   --oa-shadow: none;
   --oa-muted: var(--el-text-color-regular);
   --oa-line: var(--el-border-color-lighter);
-  --oa-accent-text: color-mix(in srgb, var(--el-color-primary) 25%, var(--el-text-color-primary));
+  --oa-accent-text: color-mix(
+    in srgb,
+    var(--el-color-primary) 25%,
+    var(--el-text-color-primary)
+  );
 }

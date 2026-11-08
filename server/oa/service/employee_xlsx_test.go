@@ -11,6 +11,39 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+func TestEmployeeImportDistinguishesDateErrors(t *testing.T) {
+	now := time.Date(2026, 11, 8, 0, 1, 0, 0, businessTime)
+	for _, tc := range []struct {
+		name, birth, hire, field, code string
+	}{
+		{"format", "1990-1-01", "2020-01-01", "birthDate", "DATE_FORMAT"},
+		{"non-ASCII digits", "１９９０-０１-０１", "2020-01-01", "birthDate", "DATE_FORMAT"},
+		{"nonexistent birth date", "1990-02-30", "2020-01-01", "birthDate", "DATE_NOT_FOUND"},
+		{"nonexistent hire date", "1990-01-01", "2025-02-29", "hireDate", "DATE_NOT_FOUND"},
+		{"unsupported year", "0999-12-31", "2020-01-01", "birthDate", "DATE_OUT_OF_RANGE"},
+		{"future birth date", "2026-11-09", "2026-11-10", "birthDate", "FUTURE_BIRTH_DATE"},
+		{"hire before birth", "1990-01-02", "1990-01-01", "hireDate", "HIRE_BEFORE_BIRTH"},
+		{"leap date and future hire", "2000-02-29", "2026-11-09", "", ""},
+		{"local today", "2026-11-08", "2026-11-08", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			row := model.ImportRow{Values: model.ImportValues{
+				EmployeeNo: "TEST-1", Name: "演示人员", Department: "演示部门",
+				BirthDate: tc.birth, HireDate: tc.hire, Salary: "0.00",
+			}}
+			validateEmployeeRow(&row, now)
+			if tc.code == "" {
+				if len(row.Errors) != 0 {
+					t.Fatalf("valid date rejected: %+v", row.Errors)
+				}
+			} else if len(row.Errors) != 1 || row.Errors[0].Field != tc.field ||
+				row.Errors[0].Code != tc.code || row.Errors[0].Message == "" {
+				t.Fatalf("expected %s/%s, got %+v", tc.field, tc.code, row.Errors)
+			}
+		})
+	}
+}
+
 func TestEmployeeImportTemplateAndPhysicalRows(t *testing.T) {
 	service := new(Service)
 	data, err := service.EmployeeImportTemplate(model.Actor{AuthorityID: model.HRAdmin})

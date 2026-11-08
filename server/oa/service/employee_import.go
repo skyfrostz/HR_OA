@@ -89,6 +89,62 @@ func (s *Service) EmployeeImportPreview(ctx context.Context, actor model.Actor, 
 	return preview, err
 }
 
+func lockOwnedEmployeeImport(tx *gorm.DB, actor model.Actor, id string) (model.EmployeeImport, error) {
+	var record model.EmployeeImport
+	var user workflowUser
+	err := workflowUsers(tx).Clauses(clause.Locking{Strength: "SHARE"}).
+		Where("u.id = ? AND u.authority_id = ?", actor.UserID, model.HRAdmin).Take(&user).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return record, ErrForbidden
+	}
+	if err != nil {
+		return record, err
+	}
+	err = tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Take(&record, "id = ? AND creator_id = ?", id, actor.UserID).Error
+	return record, queryError(err)
+}
+
+func (s *Service) DiscardEmployeeImport(ctx context.Context, actor model.Actor, id string) (model.ImportPreview, error) {
+	var result model.ImportPreview
+	if !actor.CanWrite() {
+		return result, ErrForbidden
+	}
+	if !validPreviewID(id) {
+		return result, ErrNotFound
+	}
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		record, err := lockOwnedEmployeeImport(tx, actor, id)
+		if err != nil {
+			return err
+		}
+		if record.Status != model.ImportPending && record.Status != model.ImportExpired {
+			return ErrInvalidState
+		}
+		now := workflowNow()
+		result, err = importPreview(record, now)
+		if err != nil {
+			return err
+		}
+		result.Status, result.CanConfirm, result.Rows = model.ImportExpired, false, []model.ImportRow{}
+		if record.Status == model.ImportExpired {
+			return nil
+		}
+		if now.Before(result.ExpiresAt) {
+			result.ExpiresAt = now
+		}
+		cleaned, err := json.Marshal(result)
+		if err != nil {
+			return err
+		}
+		return tx.Model(&record).Updates(map[string]any{
+			"status": model.ImportExpired, "expires_at": result.ExpiresAt, "purged_at": now,
+			"preview": cleaned, "validated": nil,
+		}).Error
+	}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	return result, err
+}
+
 func (s *Service) ConfirmEmployeeImport(ctx context.Context, actor model.Actor, id string) (model.ImportResult, error) {
 	if !actor.CanWrite() {
 		return model.ImportResult{}, ErrForbidden
@@ -98,24 +154,15 @@ func (s *Service) ConfirmEmployeeImport(ctx context.Context, actor model.Actor, 
 	}
 	var result model.ImportResult
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var user workflowUser
-		err := workflowUsers(tx).Clauses(clause.Locking{Strength: "SHARE"}).
-			Where("u.id = ? AND u.authority_id = ?", actor.UserID, model.HRAdmin).Take(&user).Error
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrForbidden
-		}
+		record, err := lockOwnedEmployeeImport(tx, actor, id)
 		if err != nil {
 			return err
-		}
-		var record model.EmployeeImport
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Take(&record, "id = ? AND creator_id = ?", id, actor.UserID).Error; err != nil {
-			return queryError(err)
 		}
 		if record.Status == model.ImportCommitted {
 			return json.Unmarshal(record.Result, &result)
 		}
 		now := workflowNow()
-		if !now.Before(record.ExpiresAt) {
+		if record.Status == model.ImportExpired || !now.Before(record.ExpiresAt) {
 			return ErrPreviewExpired
 		}
 		preview, err := importPreview(record, now)

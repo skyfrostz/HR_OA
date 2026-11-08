@@ -62,11 +62,15 @@ if [[ ! "$address" =~ ^127\.0\.0\.1:[0-9]+$ ]]; then
 fi
 export OA_SEED_PASSWORD="$OA_CI_SEED_PASSWORD"
 export OA_CI_PROJECT="$project"
+browser_args=()
+if [[ -n "${OA_CI_BROWSER_ARTIFACTS:-}" ]]; then
+    browser_args+=(--artifacts "$OA_CI_BROWSER_ARTIFACTS")
+fi
 if [[ "${OA_CI_BROWSER_ONLY:-0}" == 1 ]]; then
     : "${OA_CI_BROWSER_PYTHON:?Provide a Playwright Python interpreter}"
     : "${OA_CI_WEB_PORT:?Use --mock-providers for the isolated browser project}"
     "$OA_CI_BROWSER_PYTHON" -B tests/oa_m6_browser.py --base "http://127.0.0.1:$OA_CI_WEB_PORT" --mock --prepare-mock \
-        --section "${OA_CI_BROWSER_SECTION:-all}"
+        --section "${OA_CI_BROWSER_SECTION:-all}" ${browser_args[@]+"${browser_args[@]}"}
     exit 0
 fi
 python3 -B tests/oa_ci_integration.py --base "http://$address"
@@ -76,6 +80,13 @@ if [[ -n "$OA_CI_API_PORT" ]]; then
     [[ "$web" == "127.0.0.1:$OA_CI_WEB_PORT" ]]
     python3 -B tests/oa_m6_providers.py --base "http://$web" --mock "http://127.0.0.1:$OA_CI_MOCK_PORT"
     if [[ -n "${OA_CI_BROWSER_PYTHON:-}" ]]; then
-        "$OA_CI_BROWSER_PYTHON" -B tests/oa_m6_browser.py --base "http://$web" --mock
+        browser_status=0
+        "$OA_CI_BROWSER_PYTHON" -B tests/oa_m6_browser.py --base "http://$web" --mock ${browser_args[@]+"${browser_args[@]}"} || browser_status=$?
+        if [[ -n "${OA_CI_UI_UX_ARTIFACTS:-}" ]]; then
+            "$OA_CI_BROWSER_PYTHON" -B tests/oa_ui_ux_regression.py --base "http://$web" --artifacts "$OA_CI_UI_UX_ARTIFACTS" || browser_status=$?
+        fi
+        if (( browser_status )); then
+            exit "$browser_status"
+        fi
     fi
 fi

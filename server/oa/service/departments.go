@@ -13,6 +13,8 @@ import (
 
 var ErrStaleRecord = errors.New("stale record")
 
+const maxDepartmentDepth = 20
+
 func (s *Service) Departments(ctx context.Context, actor model.Actor, p model.Pagination) (model.Page[model.DepartmentView], error) {
 	page := model.NewPage[model.DepartmentView](p)
 	if actor.AuthorityID != model.HRAdmin && actor.AuthorityID != model.HRViewer {
@@ -98,7 +100,7 @@ func validDepartmentTree(parents map[uint]*uint) bool {
 	for node := range parents {
 		for depth := 1; ; depth++ {
 			parent, exists := parents[node]
-			if !exists || depth > 20 {
+			if !exists || depth > maxDepartmentDepth {
 				return false
 			}
 			if parent == nil {

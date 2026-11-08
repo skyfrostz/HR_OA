@@ -14,7 +14,7 @@ import (
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json
-// @Param filter body model.EmployeeSearch true "query最多100字符；departmentId只匹配本部门；分页默认1/20"
+// @Param filter body model.EmployeeSearch true "query最多100字符；departmentScope默认DIRECT，SUBTREE要求departmentId；分页默认1/20"
 // @Success 200 {object} response.Response{data=model.Page[model.EmployeeView]}
 // @Failure 400,401,403,413,500 {object} response.Response{data=errorData}
 // @Router /api/oa/v1/employees/search [post]

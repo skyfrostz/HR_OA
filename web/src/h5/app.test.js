@@ -8,32 +8,85 @@ const applicant = { id: 1, displayName: '演示申请人', role: 'EMPLOYEE' }
 const manager = { id: 2, displayName: '演示负责人', role: 'APPROVER' }
 const delegate = { id: 4, displayName: '演示代理审批人', role: 'APPROVER' }
 const route = [
-  { step: 1, name: '负责人审批', assigneeId: 2, assigneeName: manager.displayName },
+  {
+    step: 1,
+    name: '负责人审批',
+    assigneeId: 2,
+    assigneeName: manager.displayName
+  },
   { step: 2, name: '复核审批', assigneeId: 3, assigneeName: '演示复核人' }
 ]
 const templates = [
-  { type: 'LEAVE', name: '请假申请', version: 1, description: '提交请假日期', route },
-  { type: 'EXPENSE', name: '报销申请', version: 1, description: '提交报销金额', route },
-  { type: 'GENERAL', name: '通用申请', version: 1, description: '提交一般事项', route }
+  {
+    type: 'LEAVE',
+    name: '请假申请',
+    version: 1,
+    description: '提交请假日期',
+    route
+  },
+  {
+    type: 'EXPENSE',
+    name: '报销申请',
+    version: 1,
+    description: '提交报销金额',
+    route
+  },
+  {
+    type: 'GENERAL',
+    name: '通用申请',
+    version: 1,
+    description: '提交一般事项',
+    route
+  }
 ]
 const summary = {
-  id: 7, type: 'GENERAL', title: '模拟设备领用', status: 'IN_REVIEW',
-  applicantId: 1, applicantName: applicant.displayName, previousRequestId: null,
-  currentStep: 1, createdAt: timestamp, updatedAt: timestamp
+  id: 7,
+  type: 'GENERAL',
+  title: '模拟设备领用',
+  status: 'IN_REVIEW',
+  applicantId: 1,
+  applicantName: applicant.displayName,
+  previousRequestId: null,
+  currentStep: 1,
+  createdAt: timestamp,
+  updatedAt: timestamp
 }
 const task = {
-  id: 9, requestId: 7, requestTitle: summary.title, requestType: summary.type,
-  applicantName: applicant.displayName, step: 1, stepName: '负责人审批', assigneeId: 2,
-  assigneeName: manager.displayName, status: 'PENDING', version: 1, createdAt: timestamp, completedAt: null
+  id: 9,
+  requestId: 7,
+  requestTitle: summary.title,
+  requestType: summary.type,
+  applicantName: applicant.displayName,
+  step: 1,
+  stepName: '负责人审批',
+  assigneeId: 2,
+  assigneeName: manager.displayName,
+  status: 'PENDING',
+  version: 1,
+  createdAt: timestamp,
+  completedAt: null
 }
 const submitAction = {
-  id: 11, requestId: 7, requestTitle: summary.title, requestType: summary.type, taskId: null,
-  actorId: 1, actorName: applicant.displayName, action: 'SUBMIT', comment: '', targetUserId: null,
-  targetName: null, createdAt: timestamp
+  id: 11,
+  requestId: 7,
+  requestTitle: summary.title,
+  requestType: summary.type,
+  taskId: null,
+  actorId: 1,
+  actorName: applicant.displayName,
+  action: 'SUBMIT',
+  comment: '',
+  targetUserId: null,
+  targetName: null,
+  createdAt: timestamp
 }
 const detail = {
-  ...summary, templateVersion: 1, form: { content: '需要一套测试设备' },
-  route, tasks: [task], history: [submitAction]
+  ...summary,
+  templateVersion: 1,
+  form: { content: '需要一套测试设备' },
+  route,
+  tasks: [task],
+  history: [submitAction]
 }
 
 function json(data, status = 200) {
@@ -52,16 +105,20 @@ function fixtureServer({ user = applicant, onRequest } = {}) {
     const path = url.replace('/api/oa/v1', '')
     if (path === '/auth/login') {
       return json({
-        user, token: 'fixture', expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        user,
+        token: 'fixture',
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
         permissions: {
-          canSubmitRequests: user.role === 'EMPLOYEE' || user.role === 'APPROVER',
+          canSubmitRequests:
+            user.role === 'EMPLOYEE' || user.role === 'APPROVER',
           canApproveRequests: user.role === 'APPROVER'
         }
       })
     }
     const result = onRequest?.(path, options)
     if (result) return result
-    if (path === '/request-templates') return json({ list: templates, integrationMode: 'mock' })
+    if (path === '/request-templates')
+      return json({ list: templates, integrationMode: 'mock' })
     if (path === '/requests/7') return json(detail)
     if (path === '/requests?page=1&pageSize=20') return page([summary])
     if (path === '/tasks?page=1&pageSize=20') return page([task])
@@ -78,14 +135,18 @@ function findButton(wrapper, label) {
 }
 
 async function clickTab(wrapper, label) {
-  const match = wrapper.findAll('[role="tab"]').find((item) => item.text() === label)
+  const match = wrapper
+    .findAll('[role="tab"]')
+    .find((item) => item.text() === label)
   expect(match, 'tab ' + label).toBeDefined()
   await match.trigger('click')
   await flushPromises()
 }
 
 async function openRecord(wrapper, title = summary.title) {
-  const match = wrapper.findAll('button').find((item) => item.text().includes(title))
+  const match = wrapper
+    .findAll('button')
+    .find((item) => item.text().includes(title))
   expect(match, 'record ' + title).toBeDefined()
   await match.trigger('click')
   await flushPromises()
@@ -104,7 +165,12 @@ describe('mobile approval entry', () => {
     // Keep Vant's deferred layout measurements inside this test's DOM lifetime.
     // Leave setImmediate real so flushPromises can still settle API responses.
     vi.useFakeTimers({
-      toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'],
+      toFake: [
+        'setTimeout',
+        'clearTimeout',
+        'requestAnimationFrame',
+        'cancelAnimationFrame'
+      ],
       loopLimit: 100
     })
     localStorage.clear()
@@ -136,12 +202,19 @@ describe('mobile approval entry', () => {
       user: manager,
       onRequest(path, options) {
         if (path === '/tasks?page=1&pageSize=20') {
-          return json({ list: assigned ? [task] : [], total: assigned ? 21 : 0, page: 1, pageSize: 20 })
+          return json({
+            list: assigned ? [task] : [],
+            total: assigned ? 21 : 0,
+            page: 1,
+            pageSize: 20
+          })
         }
         if (path === '/tasks?page=2&pageSize=20') {
           if (++secondPageCalls === 2) {
             slowSignal = options.signal
-            return new Promise((resolve) => { slow = resolve })
+            return new Promise((resolve) => {
+              slow = resolve
+            })
           }
           return json({ list: [task], total: 21, page: 2, pageSize: 20 })
         }
@@ -169,31 +242,75 @@ describe('mobile approval entry', () => {
     await flushPromises()
     expect(wrapper.text()).toContain(summary.title)
     expect(wrapper.text()).toContain('第 2 / 2 页')
-    expect(mock.mock.calls.filter(([url]) => url.includes('/tasks?page=2'))).toHaveLength(3)
+    expect(
+      mock.mock.calls.filter(([url]) => url.includes('/tasks?page=2'))
+    ).toHaveLength(3)
   })
 
   it('submits leave with a frozen intent through a network failure and an in-progress replay', async () => {
     const submitted = {
-      ...detail, type: 'LEAVE', title: '演示请假',
-      form: { leaveTypeId: 1, leaveTypeVersion: 1, calendarVersion: 1, startDate: '2026-11-09', endDate: '2026-11-10', startHalf: 'AM', endHalf: 'PM', reason: '演示事由' }
+      ...detail,
+      type: 'LEAVE',
+      title: '演示请假',
+      form: {
+        leaveTypeId: 1,
+        leaveTypeVersion: 1,
+        calendarVersion: 1,
+        startDate: '2026-11-09',
+        endDate: '2026-11-10',
+        startHalf: 'AM',
+        endHalf: 'PM',
+        reason: '演示事由'
+      }
     }
     let attempts = 0
     const mock = fixtureServer({
       onRequest(path) {
-        if (path === '/leave-types') return json({ list: [{ id: 1, name: '年假', usesBalance: true, enabled: true, version: 1 }] })
-        if (path === '/leave-preview') return json({ calculation: { ...submitted.form, leaveTypeName: '年假', usesBalance: true, totalHalfDays: 4, years: [{ year: 2026, halfDays: 4 }], days: [] }, balances: [], canSubmit: true, issues: [] })
+        if (path === '/leave-types')
+          return json({
+            list: [
+              {
+                id: 1,
+                name: '年假',
+                usesBalance: true,
+                enabled: true,
+                version: 1
+              }
+            ]
+          })
+        if (path === '/leave-preview')
+          return json({
+            calculation: {
+              ...submitted.form,
+              leaveTypeName: '年假',
+              usesBalance: true,
+              totalHalfDays: 4,
+              years: [{ year: 2026, halfDays: 4 }],
+              days: []
+            },
+            balances: [],
+            canSubmit: true,
+            issues: []
+          })
         if (path === '/requests/7') return json(submitted)
         if (path !== '/requests') return
         attempts++
         if (attempts === 1) throw new TypeError('fixture network error')
-        if (attempts === 2) return json({ errorCode: 'IDEMPOTENCY_IN_PROGRESS' }, 409)
+        if (attempts === 2)
+          return json({ errorCode: 'IDEMPOTENCY_IN_PROGRESS' }, 409)
         return json(submitted, 201)
       }
     })
     await login(wrapper)
-    expect(wrapper.text()).toContain('选择一种演示表单')
-    expect(wrapper.findAll('[role="tab"]').map((item) => item.text())).not.toContain('待办')
+    expect(wrapper.text()).toContain('选择申请类型后开始填写')
+    expect(
+      wrapper.findAll('[role="tab"]').map((item) => item.text())
+    ).not.toContain('待办')
     await openRecord(wrapper, '请假申请')
+    expect(wrapper.find('.h5-header').exists()).toBe(false)
+    expect(wrapper.find('.h5-nav-shell').exists()).toBe(false)
+    expect(wrapper.find('.h5-shortcuts').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="申请类型"]').exists()).toBe(false)
     await wrapper.get('#h5-leave-type').setValue('1')
     await wrapper.get('#h5-request-title').setValue('演示请假')
     await wrapper.get('#h5-field-startDate').setValue('2026-11-09')
@@ -209,7 +326,9 @@ describe('mobile approval entry', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('暂时无法确认提交结果')
     expect(wrapper.get('#h5-field-reason').attributes('disabled')).toBeDefined()
-    await clickTab(wrapper, '我的申请')
+    expect(wrapper.find('.h5-nav-shell').exists()).toBe(false)
+    expect(findButton(wrapper, '返回列表').attributes('disabled')).toBeDefined()
+    await findButton(wrapper, '返回列表').trigger('click')
     expect(wrapper.text()).toContain('重试原提交')
     await findButton(wrapper, '重试原提交').trigger('click')
     await flushPromises()
@@ -217,13 +336,23 @@ describe('mobile approval entry', () => {
     await findButton(wrapper, '重试原提交').trigger('click')
     await flushPromises()
 
-    const writes = mock.mock.calls.filter(([url]) => url === '/api/oa/v1/requests')
+    const writes = mock.mock.calls.filter(
+      ([url]) => url === '/api/oa/v1/requests'
+    )
     expect(writes).toHaveLength(3)
-    expect(new Set(writes.map(([, options]) => options.headers.get('Idempotency-Key'))).size).toBe(1)
-    expect(writes[0][1].headers.get('Idempotency-Key')).toMatch(/^[0-9a-f]{32}$/)
+    expect(
+      new Set(
+        writes.map(([, options]) => options.headers.get('Idempotency-Key'))
+      ).size
+    ).toBe(1)
+    expect(writes[0][1].headers.get('Idempotency-Key')).toMatch(
+      /^[0-9a-f]{32}$/
+    )
     expect(new Set(writes.map(([, options]) => options.body)).size).toBe(1)
     expect(JSON.parse(writes[0][1].body)).toEqual({
-      type: 'LEAVE', title: submitted.title, form: submitted.form
+      type: 'LEAVE',
+      title: submitted.title,
+      form: submitted.form
     })
     expect(wrapper.text()).toContain('申请详情')
     expect(wrapper.text()).toContain('负责人审批')
@@ -238,11 +367,13 @@ describe('mobile approval entry', () => {
     const mock = fixtureServer({
       onRequest(path) {
         const status = approved ? 'APPROVED' : 'IN_REVIEW'
-        if (path === '/requests?page=1&pageSize=20') return page([{ ...summary, status }])
+        if (path === '/requests?page=1&pageSize=20')
+          return page([{ ...summary, status }])
         if (path === '/requests/7') return json({ ...detail, status })
       }
     })
-    const listRequests = () => mock.mock.calls.filter(([url]) => url === listPath)
+    const listRequests = () =>
+      mock.mock.calls.filter(([url]) => url === listPath)
 
     await login(wrapper)
     await clickTab(wrapper, '我的申请')
@@ -268,13 +399,19 @@ describe('mobile approval entry', () => {
       user: manager,
       onRequest(path) {
         if (path === '/requests/7') {
-          return json(attempts >= 2 ? { ...detail, status: 'APPROVED', tasks: [] } :
-            { ...detail, tasks: [{ ...task, version: 1 + attempts }] })
+          return json(
+            attempts >= 2
+              ? { ...detail, status: 'APPROVED', tasks: [] }
+              : { ...detail, tasks: [{ ...task, version: 1 + attempts }] }
+          )
         }
-        if (path === '/tasks?page=1&pageSize=20') return page(attempts >= 2 ? [] : [task])
+        if (path === '/tasks?page=1&pageSize=20')
+          return page(attempts >= 2 ? [] : [task])
         if (path !== '/tasks/9/actions') return
         attempts++
-        return attempts === 1 ? json({ errorCode: 'STALE_TASK' }, 409) : json({ ...detail, status: 'APPROVED' })
+        return attempts === 1
+          ? json({ errorCode: 'STALE_TASK' }, 409)
+          : json({ ...detail, status: 'APPROVED' })
       }
     })
     await login(wrapper)
@@ -293,37 +430,71 @@ describe('mobile approval entry', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('当前没有待审批任务。')
 
-    const actions = mock.mock.calls.filter(([url]) => url === '/api/oa/v1/tasks/9/actions')
+    const actions = mock.mock.calls.filter(
+      ([url]) => url === '/api/oa/v1/tasks/9/actions'
+    )
     expect(actions.map(([, options]) => JSON.parse(options.body))).toEqual([
       { action: 'APPROVE', version: 1, comment: '' },
       { action: 'APPROVE', version: 2, comment: '' }
     ])
-    expect(actions[0][1].headers.get('Idempotency-Key')).not.toBe(actions[1][1].headers.get('Idempotency-Key'))
-    expect(mock.mock.calls.filter(([url]) => url === '/api/oa/v1/requests/7')).toHaveLength(3)
+    expect(actions[0][1].headers.get('Idempotency-Key')).not.toBe(
+      actions[1][1].headers.get('Idempotency-Key')
+    )
+    expect(
+      mock.mock.calls.filter(([url]) => url === '/api/oa/v1/requests/7')
+    ).toHaveLength(3)
   })
 
   it('loads transfer candidates, records the transfer, and opens historical detail from the mock inbox', async () => {
     let moved = false
     const transferred = {
-      ...submitAction, id: 12, taskId: 9, actorId: 2, actorName: manager.displayName,
-      action: 'TRANSFER', comment: '演示转交', targetUserId: 4, targetName: delegate.displayName
+      ...submitAction,
+      id: 12,
+      taskId: 9,
+      actorId: 2,
+      actorName: manager.displayName,
+      action: 'TRANSFER',
+      comment: '演示转交',
+      targetUserId: 4,
+      targetName: delegate.displayName
     }
     const mock = fixtureServer({
       user: manager,
       onRequest(path) {
-        if (path === '/tasks/9/transfer-targets') return json({ list: [{ id: 4, displayName: delegate.displayName }] })
+        if (path === '/tasks/9/transfer-targets')
+          return json({ list: [{ id: 4, displayName: delegate.displayName }] })
         if (path === '/tasks/9/actions') {
           moved = true
           return json(detail)
         }
-        if (path === '/tasks/history?page=1&pageSize=20') return page([transferred])
+        if (path === '/tasks/history?page=1&pageSize=20')
+          return page([transferred])
         if (path === '/notifications?page=1&pageSize=20') {
-          return page([{ id: 1, eventId: 2, requestId: 7, title: '有新的待办申请', kind: 'TASK_ASSIGNED', createdAt: timestamp, deliveryMode: 'mock' }])
+          return page([
+            {
+              id: 1,
+              eventId: 2,
+              requestId: 7,
+              title: '有新的待办申请',
+              kind: 'TASK_ASSIGNED',
+              createdAt: timestamp,
+              deliveryMode: 'mock'
+            }
+          ])
         }
-        if (path === '/requests/7' && moved) return json({
-          ...detail, tasks: [{ ...task, version: 2, assigneeId: 4, assigneeName: delegate.displayName }],
-          history: [submitAction, transferred]
-        })
+        if (path === '/requests/7' && moved)
+          return json({
+            ...detail,
+            tasks: [
+              {
+                ...task,
+                version: 2,
+                assigneeId: 4,
+                assigneeName: delegate.displayName
+              }
+            ],
+            history: [submitAction, transferred]
+          })
       }
     })
     await login(wrapper)
@@ -340,19 +511,32 @@ describe('mobile approval entry', () => {
     await clickTab(wrapper, '已办')
     expect(wrapper.text()).toContain('转交')
     await clickTab(wrapper, '站内通知')
-    expect(wrapper.text()).toContain('每条记录标明投递模式')
+    expect(wrapper.text()).toContain('投递记录可展开查看')
     await openRecord(wrapper, '有新的待办申请')
     expect(wrapper.text()).toContain('申请详情')
     expect(wrapper.text()).not.toContain('处理待办')
-    const [, options] = mock.mock.calls.find(([url]) => url === '/api/oa/v1/tasks/9/actions')
-    expect(JSON.parse(options.body)).toEqual({ action: 'TRANSFER', version: 1, comment: '演示转交', targetUserId: 4 })
+    const [, options] = mock.mock.calls.find(
+      ([url]) => url === '/api/oa/v1/tasks/9/actions'
+    )
+    expect(JSON.parse(options.body)).toEqual({
+      action: 'TRANSFER',
+      version: 1,
+      comment: '演示转交',
+      targetUserId: 4
+    })
   })
 
   it('requires a reason to reject and shows the resulting approval history', async () => {
     let rejected = false
     const closed = {
-      ...detail, status: 'REJECTED', currentStep: null, tasks: [{ ...task, status: 'REJECTED' }],
-      history: [...detail.history, { ...submitAction, id: 12, action: 'REJECT', comment: '演示驳回意见' }]
+      ...detail,
+      status: 'REJECTED',
+      currentStep: null,
+      tasks: [{ ...task, status: 'REJECTED' }],
+      history: [
+        ...detail.history,
+        { ...submitAction, id: 12, action: 'REJECT', comment: '演示驳回意见' }
+      ]
     }
     const mock = fixtureServer({
       user: manager,
@@ -377,14 +561,21 @@ describe('mobile approval entry', () => {
     expect(wrapper.text()).toContain('已驳回')
     expect(wrapper.text()).toContain('演示驳回意见')
     expect(wrapper.text()).not.toContain('重新提交')
-    const [, options] = mock.mock.calls.find(([url]) => url === '/api/oa/v1/tasks/9/actions')
-    expect(JSON.parse(options.body)).toEqual({ action: 'REJECT', version: 1, comment: '演示驳回意见' })
+    const [, options] = mock.mock.calls.find(
+      ([url]) => url === '/api/oa/v1/tasks/9/actions'
+    )
+    expect(JSON.parse(options.body)).toEqual({
+      action: 'REJECT',
+      version: 1,
+      comment: '演示驳回意见'
+    })
   })
 
   it('shows a key conflict and leaves the user free to check existing applications', async () => {
     const mock = fixtureServer({
       onRequest(path) {
-        if (path === '/requests') return json({ errorCode: 'IDEMPOTENCY_KEY_REUSED' }, 422)
+        if (path === '/requests')
+          return json({ errorCode: 'IDEMPOTENCY_KEY_REUSED' }, 422)
       }
     })
     await login(wrapper)
@@ -395,17 +586,29 @@ describe('mobile approval entry', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('本次提交与原操作内容冲突')
     expect(wrapper.text()).not.toContain('重试原提交')
-    await clickTab(wrapper, '我的申请')
+    await findButton(wrapper, '返回列表').trigger('click')
+    await flushPromises()
     expect(wrapper.text()).toContain(summary.title)
-    expect(mock.mock.calls.filter(([url]) => url === '/api/oa/v1/requests')).toHaveLength(1)
+    expect(
+      mock.mock.calls.filter(([url]) => url === '/api/oa/v1/requests')
+    ).toHaveLength(1)
   })
 
   it('resubmits an edited rejected expense with exact cents and keeps the original ID', async () => {
     const rejected = {
-      ...detail, type: 'EXPENSE', title: '原报销', status: 'REJECTED',
+      ...detail,
+      type: 'EXPENSE',
+      title: '原报销',
+      status: 'REJECTED',
       form: { expenseDate: '2026-11-05', amountCents: 1009, reason: '演示费用' }
     }
-    const revised = { ...rejected, id: 8, title: '补充报销', status: 'IN_REVIEW', previousRequestId: 7 }
+    const revised = {
+      ...rejected,
+      id: 8,
+      title: '补充报销',
+      status: 'IN_REVIEW',
+      previousRequestId: 7
+    }
     const mock = fixtureServer({
       onRequest(path) {
         if (path === '/requests?page=1&pageSize=20') return page([rejected])
@@ -429,9 +632,13 @@ describe('mobile approval entry', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('原报销')
 
-    const [, options] = mock.mock.calls.find(([url]) => url === '/api/oa/v1/requests')
+    const [, options] = mock.mock.calls.find(
+      ([url]) => url === '/api/oa/v1/requests'
+    )
     expect(JSON.parse(options.body)).toEqual({
-      type: 'EXPENSE', title: '补充报销', previousRequestId: 7,
+      type: 'EXPENSE',
+      title: '补充报销',
+      previousRequestId: 7,
       form: { expenseDate: '2026-11-05', amountCents: 1201, reason: '演示费用' }
     })
   })

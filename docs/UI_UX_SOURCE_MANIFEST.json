@@ -1,0 +1,70 @@
+[
+  {
+    "repository": "vbenjs/vue-vben-admin",
+    "commit": "53b47f8ce99ecea11aa04c9c876a2f18c479838f",
+    "files": {
+      "LICENSE": "26bd1c47f2d85139581c82c7b0197785322a11217c762d65f10c04f1567450ee",
+      "apps/web-ele/src/views/demos/form/basic.vue": "772a6efdfeafe32131910a553a8d1c0b4e4d74dac0343b445ae7b42e9ad4f02e",
+      "docs/src/demos/vben-form/query/index.vue": "a5040de33069196e3dd0db00eed4ef1faa2621ac2ad6a83620f19cc6bba24ddb"
+    },
+    "usage": "structural reference; no source copied or third-party runtime executed"
+  },
+  {
+    "repository": "soybeanjs/soybean-admin",
+    "commit": "d2dfefd757e37d8d6077ea1cea6181fb628d6097",
+    "files": {
+      "LICENSE": "a79a57b906af5b6e51b0adcf3c8f5a88ea6e72191304daf45fd3f4173775ee23",
+      "src/components/advanced/table-header-operation.vue": "5d31cbe91127201b787eee70fafc3930ee2251b722c5d9e7732b2b478395e394"
+    },
+    "usage": "structural reference; no source copied or third-party runtime executed"
+  },
+  {
+    "repository": "frappe/hrms",
+    "commit": "8816102577c92979df49c20a1807b8c7ab948eb3",
+    "files": {
+      "license.txt": "f333043685c88280b1a0a41b4f8e2eacb02079f0bfca4d467e52c8834c658cea",
+      "frontend/src/components/RequestPanel.vue": "b2152886187ba7df10fefd8cf321dd1bc86beb2e05a574e99237405a58e665c5",
+      "frontend/src/components/LeaveBalance.vue": "05aaf4b22a99274215625e7eb43e4507293873e06e3be1a4557dda08ce90c45c"
+    },
+    "usage": "structural reference; no source copied or third-party runtime executed"
+  },
+  {
+    "repository": "horilla/horilla-hr",
+    "commit": "bba4b37bb4538ec1b9f149d10a3def64fc541c7a",
+    "files": {
+      "LICENSE": "20c17d8b8c48a600800dfd14f95d5cb9ff47066a9641ddeab48dc54aec96e331",
+      "employee/templates/employee/update_form/form_view.html": "bc0a8f7e26f3eded83e5532c569381f723e4313572947ffff245778432aee42d"
+    },
+    "usage": "structural reference; no source copied or third-party runtime executed"
+  },
+  {
+    "repository": "yudaocode/yudao-ui-admin-vue3",
+    "commit": "a33cdfd565edae4f866901bf6105c7087b0697c4",
+    "files": {
+      "LICENSE": "3f101f5e0207524af727e58ca8abf241b754665ee1eb90b45388ff0263d3640d",
+      "src/views/bpm/processInstance/detail/ProcessInstanceTimeline.vue": "8fe01b6705ba6158a34ac15fea01362147ccf2a540846aaf77b3d5e0c8779b7e"
+    },
+    "usage": "structural reference; no source copied or third-party runtime executed"
+  },
+  {
+    "repository": "pbakaus/impeccable",
+    "commit": "924bbd194d02e5e15a227e75b5901fb0d7a4ecad",
+    "skill_sha256": "ec5c81f17af6476cafd351875d9109b7d03329e05b3f845cb2d0bbbd4bc31b2c",
+    "license_source": "LICENSE",
+    "license_sha256": "02bb8c3b4e70190e3986c0404ad2fd8d639b4f534252d82379cc1b502b6d1812"
+  },
+  {
+    "repository": "addyosmani/agent-skills",
+    "commit": "301b02b12bff98e4688e6984af6556802322bbde",
+    "skill_sha256": "93a0ebffbb6075340d85255ae50724bc5e5e19b0fcbf2ae5d5857b9c5ddf9498",
+    "license_source": "LICENSE",
+    "license_sha256": "6f202f8bd568cd730dbb2b0d1f8e243bc74c2fa1f64dbce9b2c7ea08bd5c9fd7"
+  },
+  {
+    "repository": "anthropics/skills",
+    "commit": "2c5958ecac7cee2b583967a2c4981d0f4a75c579",
+    "skill_sha256": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3",
+    "license_source": "skills/frontend-design/LICENSE.txt",
+    "license_sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+  }
+]

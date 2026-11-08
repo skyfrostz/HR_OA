@@ -50,6 +50,9 @@ private/
 .local/
 web/dist-oa/
 tests/results/
+# Local browser diagnostics; selected reviewed screenshots live in docs/assets/.
+/.playwright-cli/
+/output/playwright/
 
 # Pure Admin's checked-in Vite defaults contain public build settings only.
 !/web-pure-admin/.env

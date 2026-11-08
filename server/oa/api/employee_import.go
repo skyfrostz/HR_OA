@@ -101,6 +101,30 @@ func (a *API) EmployeeImportPreview(c *gin.Context) {
 
 type importConfirmInput struct{}
 
+// DiscardEmployeeImport godoc
+// @Tags OA Employee Workbooks
+// @Summary 将本人未确认的预览设为失效并清理源行
+// @Security ApiKeyAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "不透明预览 ID"
+// @Param discard body importConfirmInput true "空对象"
+// @Success 200 {object} response.Response{data=model.ImportPreview}
+// @Failure 400,401,403,404,409,413,500 {object} response.Response{data=errorData}
+// @Router /api/oa/v1/employee-imports/{id}/discard [post]
+func (a *API) DiscardEmployeeImport(c *gin.Context) {
+	var input *importConfirmInput
+	if !readJSON(c, &input) {
+		return
+	}
+	if input == nil {
+		fail(c, service.ErrInvalid)
+		return
+	}
+	result, err := a.service.DiscardEmployeeImport(c.Request.Context(), Actor(c), c.Param("id"))
+	sendRead(c, result, err)
+}
+
 // ConfirmEmployeeImport godoc
 // @Tags OA Employee Workbooks
 // @Summary 按持久预览 ID 幂等确认整批导入

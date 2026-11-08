@@ -52,6 +52,28 @@ func TestEmployeeSearchInputBounds(t *testing.T) {
 	}
 }
 
+func TestEmployeeSearchValidatesDepartmentScope(t *testing.T) {
+	department := uint(8)
+	for _, tc := range []struct {
+		scope string
+		id    *uint
+		valid bool
+	}{
+		{"", nil, true},
+		{"DIRECT", nil, true},
+		{"DIRECT", &department, true},
+		{"SUBTREE", &department, true},
+		{"SUBTREE", nil, false},
+		{"subtree", &department, false},
+		{"UNKNOWN", &department, false},
+	} {
+		_, err := normalizeEmployeeFilter(model.EmployeeFilter{DepartmentID: tc.id, DepartmentScope: tc.scope})
+		if tc.valid && err != nil || !tc.valid && !errors.Is(err, ErrInvalid) {
+			t.Errorf("scope %q, id %v: got %v", tc.scope, tc.id, err)
+		}
+	}
+}
+
 func TestEmployeeSearchCannotWidenRowScopeOrSelectViewerSalary(t *testing.T) {
 	pool, err := sql.Open("mysql", "")
 	if err != nil {

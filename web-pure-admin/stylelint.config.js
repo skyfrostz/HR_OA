@@ -10,8 +10,12 @@ export default {
   plugins: ["stylelint-scss", "stylelint-order", "stylelint-prettier"],
   overrides: [
     {
-      files: ["**/*.(css|html|vue)"],
+      files: ["**/*.{html,vue}"],
       customSyntax: "postcss-html"
+    },
+    {
+      files: ["**/*.css"],
+      customSyntax: "postcss-scss"
     },
     {
       files: ["*.scss", "**/*.scss"],

@@ -1,0 +1,278 @@
+{
+  "beforeRuntime": "3e11a2a",
+  "afterRuntime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+  "browser": "148.0.7778.96",
+  "dataEvidence": "33/33 baseline and candidate fingerprints match; temporary import preview IDs/expiry/history differ; same synthetic workbook rows. Organization tree uses each version default expansion.",
+  "shots": [
+    {
+      "name": "employees-list-1440x900-light",
+      "label": "桌面员工名册",
+      "before": {
+        "file": "before/employees-list-1440x900-light.png",
+        "sha256": "bafd05054b48f5b013190dea965387fd70985e2d2296504a2b4324c5987a3f2b",
+        "role": "hr_admin",
+        "state": "live synthetic data",
+        "viewport": [
+          1440,
+          900
+        ],
+        "theme": "light",
+        "actualRuntime": "3e11a2a",
+        "sourceDirectory": "tests/results/ui-ux-20261108/before"
+      },
+      "after": {
+        "file": "after/employees-list-1440x900-light.png",
+        "sha256": "d179c156a553e4756735f0cfe3fd1004b84b823150564d9f92e28da32167fd1d",
+        "role": "hr_admin",
+        "state": "live synthetic data",
+        "viewport": [
+          1440,
+          900
+        ],
+        "theme": "light",
+        "actualRuntime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+        "sourceDirectory": "tests/results/ui-ux-20261108/after-pc-header-delta"
+      }
+    },
+    {
+      "name": "employees-list-390x844-light",
+      "label": "手机员工名册",
+      "before": {
+        "file": "before/employees-list-390x844-light.png",
+        "sha256": "09297ce7c9d0878bf7beb12ce3c8e4d52ea29ed27b70836cbee8ceeabb400d2b",
+        "role": "hr_admin",
+        "state": "live synthetic data",
+        "viewport": [
+          390,
+          844
+        ],
+        "theme": "light",
+        "actualRuntime": "3e11a2a",
+        "sourceDirectory": "tests/results/ui-ux-20261108/before"
+      },
+      "after": {
+        "file": "after/employees-list-390x844-light.png",
+        "sha256": "53f6390bdc997c63a624c662a975fc9f20ce99b382737ddbf4bfeb08772a8082",
+        "role": "hr_admin",
+        "state": "live synthetic data",
+        "viewport": [
+          390,
+          844
+        ],
+        "theme": "light",
+        "actualRuntime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+        "sourceDirectory": "tests/results/ui-ux-20261108/after-pc-header-delta"
+      }
+    },
+    {
+      "name": "employees-edit-390x844-dark",
+      "label": "手机深色员工编辑",
+      "before": {
+        "file": "before/employees-edit-390x844-dark.png",
+        "sha256": "69af503962e4454ed2af7cb664ffa6cd83c3d989b33e38dcf4512e2a67363740",
+        "role": "hr_admin",
+        "state": "live synthetic data",
+        "viewport": [
+          390,
+          844
+        ],
+        "theme": "dark",
+        "actualRuntime": "3e11a2a",
+        "sourceDirectory": "tests/results/ui-ux-20261108/before"
+      },
+      "after": {
+        "file": "after/employees-edit-390x844-dark.png",
+        "sha256": "a1dce79e9c5c9135f20271bc447cd5ddd2a7e61345c58e40b67ea67e5063eff9",
+        "role": "hr_admin",
+        "state": "live synthetic data",
+        "viewport": [
+          390,
+          844
+        ],
+        "theme": "dark",
+        "actualRuntime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+        "sourceDirectory": "tests/results/ui-ux-20261108/after-pc-header-delta"
+      }
+    },
+    {
+      "name": "pc-approval-create-1440x900-light",
+      "label": "独立审批创建",
+      "before": {
+        "file": "before/pc-approval-create-1440x900-light.png",
+        "sha256": "64dcce44bde571e0903dfb0eaaeaf573bd738e3c334a9fecb326ab5995129068",
+        "role": "employee",
+        "state": "live synthetic data",
+        "viewport": [
+          1440,
+          900
+        ],
+        "theme": "light",
+        "actualRuntime": "3e11a2a",
+        "sourceDirectory": "tests/results/ui-ux-20261108/before"
+      },
+      "after": {
+        "file": "after/pc-approval-create-1440x900-light.png",
+        "sha256": "611db8aeaac0b575e957f315cf5d1326be635811efdc06ed149f6291245cdeb8",
+        "role": "employee",
+        "state": "live synthetic data",
+        "viewport": [
+          1440,
+          900
+        ],
+        "theme": "light",
+        "actualRuntime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+        "sourceDirectory": "tests/results/ui-ux-20261108/after-pc-header-delta"
+      }
+    },
+    {
+      "name": "h5-long-top-390x844-light",
+      "label": "H5 长表单首屏",
+      "before": {
+        "file": "before/h5-long-top-390x844-light.png",
+        "sha256": "9e503ecb7169bddfd07e25dd6bedf5982ee56dffa41abe3e58aeca732a1f0373",
+        "role": "employee",
+        "state": "live synthetic data",
+        "viewport": [
+          390,
+          844
+        ],
+        "theme": "light",
+        "actualRuntime": "3e11a2a",
+        "sourceDirectory": "tests/results/ui-ux-20261108/before"
+      },
+      "after": {
+        "file": "after/h5-long-top-390x844-light.png",
+        "sha256": "bdee06f0698142a6c3bbde7e71e9c8c06addd4630335d1bb06b0a054af6aa72e",
+        "role": "employee",
+        "state": "live synthetic data",
+        "viewport": [
+          390,
+          844
+        ],
+        "theme": "light",
+        "actualRuntime": "071aa4e216b2d2a29ff52c6719a15b018028788c",
+        "sourceDirectory": "tests/results/ui-ux-20261108/after-release"
+      }
+    },
+    {
+      "name": "h5-long-submit-320x740-dark",
+      "label": "320px 深色末尾与提交",
+      "before": {
+        "file": "before/h5-long-submit-320x740-dark.png",
+        "sha256": "b6be59405d2fe4b6a3b7fa88a666279596b6af155a3379f3012d043389fda0a3",
+        "role": "employee",
+        "state": "incomplete synthetic draft; leave preview not submitted",
+        "viewport": [
+          320,
+          740
+        ],
+        "theme": "dark",
+        "actualRuntime": "3e11a2a",
+        "sourceDirectory": "tests/results/ui-ux-20261108/before"
+      },
+      "after": {
+        "file": "after/h5-long-submit-320x740-dark.png",
+        "sha256": "76a0924dfa04d9f6aeefa94671a884e9b3ac03c4d0e5d8352983ca8f73f90930",
+        "role": "employee",
+        "state": "incomplete synthetic draft; leave preview not submitted",
+        "viewport": [
+          320,
+          740
+        ],
+        "theme": "dark",
+        "actualRuntime": "071aa4e216b2d2a29ff52c6719a15b018028788c",
+        "sourceDirectory": "tests/results/ui-ux-20261108/after-release"
+      }
+    },
+    {
+      "name": "employees-contracts-390x844-dark",
+      "label": "手机深色合同与附件",
+      "before": {
+        "file": "before/employees-contracts-390x844-dark.png",
+        "sha256": "403fb8392673e2d4c97ac530e3446acc9f6a8751439d0f8bd00a4c6c3219086c",
+        "role": "hr_admin",
+        "state": "live synthetic data",
+        "viewport": [
+          390,
+          844
+        ],
+        "theme": "dark",
+        "actualRuntime": "3e11a2a",
+        "sourceDirectory": "tests/results/ui-ux-20261108/before"
+      },
+      "after": {
+        "file": "after/employees-contracts-390x844-dark.png",
+        "sha256": "2b9ea886acb572048f34c76c24ccdca8f2c1714ad3225d205fe87f35e6cf21bb",
+        "role": "hr_admin",
+        "state": "live synthetic data",
+        "viewport": [
+          390,
+          844
+        ],
+        "theme": "dark",
+        "actualRuntime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+        "sourceDirectory": "tests/results/ui-ux-20261108/after-pc-header-delta"
+      }
+    },
+    {
+      "name": "excel-preview-error-only-1440x900-light",
+      "label": "导入校验错误阶段",
+      "before": {
+        "file": "before/excel-preview-error-only-1440x900-light.png",
+        "sha256": "8cd0ebf343eafbdd439a8029728527ec9901e40e88ab0b870e86c6ac94439110",
+        "role": "hr_admin",
+        "state": "live synthetic data",
+        "viewport": [
+          1440,
+          900
+        ],
+        "theme": "light",
+        "actualRuntime": "3e11a2a",
+        "sourceDirectory": "tests/results/ui-ux-20261108/before"
+      },
+      "after": {
+        "file": "after/excel-preview-error-only-1440x900-light.png",
+        "sha256": "ebd97cbbc86ea58859ddf37beef5b39e3e00210f92321a3093bb7a0e26bde089",
+        "role": "hr_admin",
+        "state": "live synthetic data",
+        "viewport": [
+          1440,
+          900
+        ],
+        "theme": "light",
+        "actualRuntime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+        "sourceDirectory": "tests/results/ui-ux-20261108/after-pc-header-delta"
+      }
+    },
+    {
+      "name": "notifications-employee-1440x900-light",
+      "label": "业务通知与对象",
+      "before": {
+        "file": "before/notifications-employee-1440x900-light.png",
+        "sha256": "2e752e7533d48a7ea5aa06fc4b478f1b3ce57b2151826060935df2e3aae14219",
+        "role": "employee",
+        "state": "live: rows",
+        "viewport": [
+          1440,
+          900
+        ],
+        "theme": "light",
+        "actualRuntime": "3e11a2a",
+        "sourceDirectory": "tests/results/ui-ux-20261108/before"
+      },
+      "after": {
+        "file": "after/notifications-employee-1440x900-light.png",
+        "sha256": "c6b2f0bec735beada9de2def3f0ee28169276d406c8eb849561ed2a82abe00db",
+        "role": "employee",
+        "state": "live: rows",
+        "viewport": [
+          1440,
+          900
+        ],
+        "theme": "light",
+        "actualRuntime": "a43e9a41edb7a9adf4d1cabe46f0741fea39862c",
+        "sourceDirectory": "tests/results/ui-ux-20261108/after-pc-header-delta"
+      }
+    }
+  ]
+}

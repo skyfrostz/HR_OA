@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -12,6 +13,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+var importDateFormat = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}$`)
 
 type employeeRowLookup struct {
 	Row        int    `json:"row"`
@@ -52,14 +55,14 @@ func stageEmployeeRows(db *gorm.DB, rows []model.ImportRow, now time.Time) ([]st
 		match := matches[row.Row]
 		if lookup.EmployeeNo != "" {
 			if match.DuplicateCount > 1 {
-				rowError(row, "employeeNo", "工作簿中工号重复")
+				rowError(row, "employeeNo", "DUPLICATE_IN_WORKBOOK", "工作簿中工号重复")
 			}
 			if match.ExistingID != nil {
-				rowError(row, "employeeNo", "工号已存在")
+				rowError(row, "employeeNo", "EMPLOYEE_NO_EXISTS", "工号已存在")
 			}
 		}
 		if lookup.Department != "" && match.DepartmentID == nil {
-			rowError(row, "department", "部门不存在")
+			rowError(row, "department", "", "部门不存在")
 		}
 		if len(row.Errors) == 0 && match.DepartmentID != nil && match.DepartmentName != nil {
 			input := inputs[i]
@@ -81,20 +84,20 @@ func validateEmployeeRow(row *model.ImportRow, now time.Time) model.EmployeeInpu
 		{"department", values.Department, "部门须为 1–128 字符", 128},
 	} {
 		if !validText(field.value, field.limit) {
-			rowError(row, field.name, field.message)
+			rowError(row, field.name, "", field.message)
 		}
 	}
-	birth, birthErr := parseDate(values.BirthDate)
-	hire, hireErr := parseDate(values.HireDate)
-	if birthErr != nil || values.BirthDate > now.Format(dateLayout) {
-		rowError(row, "birthDate", "出生日期须为 YYYY-MM-DD，且不能晚于今天")
+	birth := validateImportDate(row, "birthDate", values.BirthDate)
+	hire := validateImportDate(row, "hireDate", values.HireDate)
+	if !birth.IsZero() && birth.After(calendarDate(now)) {
+		rowError(row, "birthDate", "FUTURE_BIRTH_DATE", "出生日期不能晚于今天")
 	}
-	if hireErr != nil || (birthErr == nil && hire.Before(birth)) {
-		rowError(row, "hireDate", "入职日期须为 YYYY-MM-DD，且不能早于出生日期")
+	if !birth.IsZero() && !hire.IsZero() && hire.Before(birth) {
+		rowError(row, "hireDate", "HIRE_BEFORE_BIRTH", "入职日期不能早于出生日期")
 	}
 	salary, salaryErr := parseSalaryYuan(values.Salary)
 	if salaryErr != nil {
-		rowError(row, "salary", "工资须为非负金额，最多两位小数且不超过安全分值上限")
+		rowError(row, "salary", "", "工资须为非负金额，最多两位小数且不超过安全分值上限")
 	}
 	return model.EmployeeInput{
 		EmployeeNo: values.EmployeeNo, Name: values.Name, Department: values.Department,
@@ -102,8 +105,24 @@ func validateEmployeeRow(row *model.ImportRow, now time.Time) model.EmployeeInpu
 	}
 }
 
-func rowError(row *model.ImportRow, field, message string) {
-	row.Errors = append(row.Errors, model.ImportRowError{Field: field, Message: message})
+func validateImportDate(row *model.ImportRow, field, value string) time.Time {
+	switch {
+	case !importDateFormat.MatchString(value):
+		rowError(row, field, "DATE_FORMAT", "请按 YYYY-MM-DD 填写日期，例如 2026-11-08")
+	case value[0] == '0':
+		rowError(row, field, "DATE_OUT_OF_RANGE", "年份须在 1000–9999 之间")
+	default:
+		date, err := parseDate(value)
+		if err == nil {
+			return date
+		}
+		rowError(row, field, "DATE_NOT_FOUND", "日期不存在，请检查月份和日期")
+	}
+	return time.Time{}
+}
+
+func rowError(row *model.ImportRow, field, code, message string) {
+	row.Errors = append(row.Errors, model.ImportRowError{Field: field, Message: message, Code: code})
 }
 
 func parseSalaryYuan(value string) (int64, error) {

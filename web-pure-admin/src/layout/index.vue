@@ -146,7 +146,7 @@ const LayHeader = defineComponent({
       {
         default: () => [
           !pureSetting.hiddenSideBar ? h(LayNavbar) : null,
-          h(LayTag)
+          set.device !== "mobile" ? h(LayTag) : null
         ]
       }
     );
